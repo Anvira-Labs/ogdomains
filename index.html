@@ -9,7 +9,10 @@
   <meta name="theme-color" content="#06060b">
   <script>
     /* set explicit theme before first paint (no flash); otherwise CSS follows prefers-color-scheme */
-    try { var t = localStorage.getItem('ogd-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+    // Set the theme before first paint. The mall opens dark unless the visitor chose
+    // light, so a light-mode OS never flashes a bright page before the scene loads.
+    var t; try { t = localStorage.getItem('ogd-theme'); } catch (e) {}
+    document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
   </script>
   <!-- TODO: set canonical and og:url/og:image to the final absolute URL once deployed -->
   <!-- <link rel="canonical" href="https://YOUR-DOMAIN/"> -->

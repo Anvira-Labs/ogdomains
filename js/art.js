@@ -205,12 +205,12 @@ export function lobbyTexture(img, theme = 'dark') {
       // around the cutout's own alpha rather than around a rectangle.
       const cx = 512, cy = top + h / 2;
       const wash = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.78);
-      wash.addColorStop(0, th === 'light' ? 'rgba(240,120,50,.30)' : 'rgba(240,120,50,.42)');
-      wash.addColorStop(0.55, th === 'light' ? 'rgba(214,74,8,.12)' : 'rgba(214,74,8,.18)');
+      wash.addColorStop(0, th === 'light' ? 'rgba(40,22,8,.20)' : 'rgba(240,120,50,.42)');
+      wash.addColorStop(0.55, th === 'light' ? 'rgba(40,22,8,.07)' : 'rgba(214,74,8,.18)');
       wash.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = wash;
       ctx.fillRect(0, 0, 1024, 1024);
-      const glowCol = th === 'light' ? 'rgba(188,60,0,.60)' : 'rgba(240,120,50,.85)';
+      const glowCol = th === 'light' ? 'rgba(28,16,6,.62)' : 'rgba(240,120,50,.85)';
       for (const blur of [64, 36, 18]) {
         ctx.save();
         ctx.shadowColor = glowCol;

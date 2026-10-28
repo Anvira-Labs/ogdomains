@@ -27,9 +27,8 @@ let scene, camera, renderer;
 const doors = []; // { mesh, mat, accent, pool, index, k }
 const camLights = [];
 const THEME_KEY = 'ogd-theme';
-const mqLight = matchMedia('(prefers-color-scheme: light)');
 function storedTheme() { try { const t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : null; } catch { return null; } }
-let theme = root.getAttribute('data-theme') || storedTheme() || (mqLight.matches ? 'light' : 'dark');
+let theme = storedTheme() || 'dark';
 // Per-theme scene look. Light = bright daylight atrium; emissive strips/pools toned down.
 const LOOK = {
   dark: { bg: 0x1d1814, fog: 0.022, ambC: 0xd9b88c, amb: 2.6, wall: 0x4d4238, floor: 0x3a322b, floorR: 0.35, floorM: 0.25, ceil: 0xffffff, beam: 0x1c140d, glowO: 0.6, washO: 0.28,
@@ -77,9 +76,7 @@ function applyTheme(t, persist) {
 {
   const btn = document.getElementById('theme-toggle');
   if (btn) btn.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark', true));
-  // follow the OS only while the visitor has not made an explicit choice
-  const onMq = () => { if (!storedTheme()) applyTheme(mqLight.matches ? 'light' : 'dark', false); };
-  if (mqLight.addEventListener) mqLight.addEventListener('change', onMq);
+  // The mall opens dark by design; the OS preference is deliberately not followed.
   applyTheme(theme, false);
 }
 
@@ -134,6 +131,8 @@ function setBackHandlerSafe() { history.state && history.state.store != null ? h
 let doorMeshes = [];
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2(0, 0);
+// Touch has no hover, so on phones the camera steers toward the next storefront by itself (px replaces pointer.x).
+let px = 0, steer = 0, steerIdx = -1;
 const look = new THREE.Vector3(0, 1.6, -10);
 const wantPos = new THREE.Vector3(0, 1.7, Z0);
 const wantLook = new THREE.Vector3(0, 1.6, Z0 - 10);
@@ -153,8 +152,8 @@ function storePose(i, pos, lk) {
 function hallPose(pos, lk, bob = 0) {
   const p = Math.min(1, Math.max(0, scrollY / cachedMax));
   const z = Z0 + (Z1 - Z0) * p;
-  pos.set(pointer.x * 0.5, 1.7 + bob, z);
-  lk.set(pointer.x * 2.6, 1.6 + pointer.y * 0.9, z - 10);
+  pos.set(px * (isMobile ? 0.2 : 0.5), 1.7 + bob, z);
+  lk.set(px * (isMobile ? 12 : 2.6), 1.6 + pointer.y * 0.9, z - 10);
   return p;
 }
 function startDolly(entering) {
@@ -437,6 +436,17 @@ function frame() {
   const t = clock.elapsedTime;
   sampleFrame(raw);
 
+  if (isMobile) {
+    let tgt = 0, idx = -1;
+    if (mode === 'hall') {
+      let best = 1e9;
+      for (let i = 0; i < N; i++) { const a = wantPos.z - storeZ(i); if (a > 1.5 && a < best) { best = a; idx = i; } }
+      if (idx >= 0 && best < 15) tgt = sideOf(idx) * Math.min(1, (15 - best) / 5) * 0.85 * Math.min(1, (best - 1.5) / 2.5 + 0.35);
+      else idx = -1;
+    }
+    steer = THREE.MathUtils.damp(steer, tgt, 3, dt); steerIdx = idx; px = steer;
+  } else px = pointer.x;
+
   const LK = LOOK[theme];
   // hover easing (~0.25s) for every door
   for (const d of doors) {
@@ -452,7 +462,7 @@ function frame() {
       const ahead = camera.position.z - storeZ(d.index);
       const near = ahead > 0.5 ? Math.max(0, 1 - Math.abs(ahead - 7) / 11) : 0;
       // pointer.x is -1..1; reward turning toward this door's own side
-      const toward = Math.max(0, pointer.x * d.side);
+      const toward = Math.max(0, px * d.side);
       want = near * near * Math.min(1, toward * 1.35) + near * near * 0.12 + d.k * 0.45;
       want = Math.min(1, want);
     }
@@ -493,7 +503,7 @@ function frame() {
       let near = -1, best = 8;
       for (let i = 0; i < N; i++) { const dz = Math.abs(z - storeZ(i)); if (dz < best) { best = dz; near = i; } }
       markActive(near);
-      const h = pick();
+      const h = isMobile ? (steerIdx >= 0 && doors[steerIdx].present > 0.6 ? steerIdx : -1) : pick();
       if (h !== hover) {
         hover = h;
         if (h >= 0) { hintEl.textContent = `Enter ${DOMAINS[h].name}`; hintEl.classList.add('on'); } else hintEl.classList.remove('on');
@@ -547,7 +557,9 @@ async function init() {
   }, { passive: true });
   canvasEl.addEventListener('click', (e) => {
     pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
-    const h = pick();
+    let h = pick();
+    // touch assist: a tap on the side of the nearly presented storefront counts as a tap on it
+    if (h < 0 && isMobile && mode === 'hall' && steerIdx >= 0 && doors[steerIdx].present > 0.5 && pointer.x * doors[steerIdx].side > 0.15) h = steerIdx;
     if (h >= 0) enterStore(h);
   });
 
