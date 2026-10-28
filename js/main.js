@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { DOMAINS } from './domains.js';
-import { windowTexture, signTexture, lobbyTexture, textPlane, wallEmblemTexture, ceilingTexture, recessTexture, crowdTexture, crowdShadowTexture } from './art.js';
+import { windowTexture, signTexture, lobbyTexture, textPlane, wallEmblemTexture, ceilingTexture, recessTexture } from './art.js';
 import { renderDirectory, markActive, openStore, closeStore, isStoreOpen, setBackHandler, isModalOpen, closeModal } from './ui.js';
 
 const N = DOMAINS.length;
@@ -62,7 +62,6 @@ function applySceneTheme() {
   (S.emblems || []).forEach((t) => t.userData.setTheme(theme));
   S.lobbyTex.userData.setTheme(theme); S.endTex.userData.setTheme(theme);
   const K = S.kit; // storefront portal kit: shared materials/textures retinted in place
-  if (S.crowd) S.crowd.setTheme(theme);
   if (K) { K.stone.color.setHex(L.stone); K.plinth.color.setHex(L.plinth); K.texs.forEach((t) => t.userData.setTheme(theme)); }
 }
 function applyTheme(t, persist) {
@@ -389,118 +388,6 @@ function buildDust() {
 }
 
 
-// ---------- crowd: billboard impostors (Y-axis only), baked lighting, never raycast ----------
-// [variant, lane x, dir (+1 = toward camera start), speed m/s, height scale, stops beside storefronts]
-const CROWD = [
-  [0, -1.9, -1, 1.05, 1.04, 0], [1, 2.4, 1, 0.95, 0.94, 0], [12, -3.2, 1, 1.0, 1, 0], [2, 0.9, -1, 1.2, 0.99, 0], [3, 3.1, -1, 0.85, 0.93, 1],
-  [4, -2.6, 1, 0.75, 0.98, 0], [5, 1.6, 1, 1.1, 0.95, 1], [6, -0.9, -1, 1.25, 1.07, 0], [13, 3.4, 1, 0.9, 1, 0], [7, -3.5, -1, 0.8, 1.02, 1],
-  [8, 2.0, -1, 1.0, 0.9, 0], [9, -1.5, 1, 0.9, 0.94, 0], [10, 0.3, -1, 1.1, 1.03, 0], [11, -2.4, -1, 0.95, 0.95, 0],
-];
-const CZ_MAX = 13, CZ_MIN = Z1 - 9, CR_FADE_END = 5;
-const smooth01 = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
-const CR_LOOK = {
-  dark: { base: 1, refl: 0.3, sh: 0.8, shC: 0x000000 },
-  light: { base: 1, refl: 0.13, sh: 0.38, shC: 0x2a3a58 },
-};
-function buildCrowd() {
-  const atlas = crowdTexture(theme), cells = atlas.userData.cells, shTex = crowdShadowTexture();
-  const FM = 16 / 512;
-  const bodyGeo = new THREE.PlaneGeometry(1, 1); bodyGeo.translate(0, 0.5 - FM, 0);
-  const reflGeo = new THREE.PlaneGeometry(1, 0.5, 1, 6); reflGeo.translate(0, 0.25 - FM, 0);
-  { // upper half of the cell only, alpha fading with depth into the "floor"
-    const uv = reflGeo.attributes.uv, pos = reflGeo.attributes.position, col = new Float32Array(pos.count * 4);
-    for (let i = 0; i < pos.count; i++) {
-      uv.setY(i, uv.getY(i) * 0.5); // v in [0, .5] = the bottom half of the cell
-      const a = Math.max(0, 1 - (pos.getY(i) + FM) / 0.5); col.set([1, 1, 1, a * a], i * 4);
-    }
-    reflGeo.setAttribute('color', new THREE.BufferAttribute(col, 4));
-  }
-  const shGeo = new THREE.PlaneGeometry(1, 1); shGeo.rotateX(-Math.PI / 2);
-  const noRay = () => {};
-  const figs = [];
-  CROWD.forEach(([v, lane, dir, speed, hs, stopper], n) => {
-    const cell = cells[v], map = atlas.clone();
-    map.repeat.set(cell.du, cell.dv); map.offset.set(cell.u0, cell.v0); map.needsUpdate = true;
-    const mat = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false });
-    const rmat = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, depthTest: false, vertexColors: true });
-    const smat = new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-    const sx = cell.wm * hs, sy = cell.hm * hs;
-    const body = new THREE.Mesh(bodyGeo, mat), refl = new THREE.Mesh(reflGeo, rmat), shadow = new THREE.Mesh(shGeo, smat);
-    body.scale.set(sx, sy, 1); refl.scale.set(sx, -sy, 1);
-    shadow.scale.set((cell.pair ? 1.9 : 1.0) * hs, 1, 0.55 * hs);
-    shadow.renderOrder = 8; refl.renderOrder = 9; body.renderOrder = 10;
-    [body, refl, shadow].forEach((m) => { m.raycast = noRay; m.frustumCulled = false; scene.add(m); });
-    const f = {
-      body, refl, shadow, mat, rmat, smat, map, lane, dir, speed: speed * (0.9 + 0.2 * ((n * 37) % 10) / 10), stopper,
-      x: lane, z: CZ_MIN + (CZ_MAX - CZ_MIN) * ((n + 0.5) / CROWD.length) + ((n * 53) % 7 - 3) * 0.6,
-      phase: n * 1.9, moveK: 1, wait: 0, stopZ: NaN, stopX: 0, flip: n % 2 ? 1 : -1, pause: false, sx,
-    };
-    figs.push(f);
-  });
-  const retint = (th) => {
-    atlas.userData.setTheme(th);
-    const L = CR_LOOK[th];
-    figs.forEach((f) => { f.map.needsUpdate = true; f.smat.color.setHex(L.shC); });
-  };
-  S.crowd = { figs, setTheme: retint, atlas };
-  figs.forEach((f) => crowdPickStop(f));
-}
-function crowdPickStop(f) {
-  f.stopZ = NaN;
-  if (!f.stopper) return;
-  let best = 1e9;
-  for (let i = 0; i < N; i++) {
-    const zz = storeZ(i) - f.dir * 2.5; // just short of the doorway, on the approach side: never in front of the opening
-    const ahead = (zz - f.z) * f.dir;
-    if (ahead > 4 && ahead < best) { best = ahead; f.stopZ = zz; f.stopX = sideOf(i) * 4.5; }
-  }
-}
-function updateCrowd(dt, t) {
-  const C = S.crowd; if (!C) return;
-  const L = CR_LOOK[theme], cp = camera.position;
-  const anim = !reduceMotion;
-  for (let i = 0; i < C.figs.length; i++) {
-    const f = C.figs[i];
-    if (anim) {
-      let want = 1;
-      if (f.pause) { want = 0; f.wait -= dt; if (f.wait <= 0) { f.pause = false; f.stopZ = NaN; f.cool = 6 + (i % 5); } }
-      else if (!isNaN(f.stopZ)) {
-        const rem = (f.stopZ - f.z) * f.dir;
-        want = Math.min(1, Math.max(0.12, rem / 2.2));
-        if (rem < 0.25) { f.pause = true; f.wait = 5 + (i % 4) * 1.5; want = 0; }
-      }
-      if (f.cool > 0) { f.cool -= dt; if (f.cool <= 0 && f.stopper) crowdPickStop(f); }
-      f.moveK += (want - f.moveK) * Math.min(1, dt * 2.5);
-      f.z += f.dir * f.speed * f.moveK * dt;
-      f.phase += dt * Math.PI * f.speed * f.moveK / 0.72;
-      // lane: drift to the wall-side standing spot when stopping, back to the lane afterwards
-      const tx = !isNaN(f.stopZ) && (f.stopZ - f.z) * f.dir < 5 || f.pause ? f.stopX : f.lane;
-      f.x += (tx - f.x) * Math.min(1, dt * 0.8);
-      if (f.z > CZ_MAX && f.dir > 0) { f.z = CZ_MIN; if (f.stopper) crowdPickStop(f); }
-      else if (f.z < CZ_MIN && f.dir < 0) { f.z = CZ_MAX; if (f.stopper) crowdPickStop(f); }
-    }
-    const walk = anim ? f.moveK : 0;
-    const bob = anim ? Math.abs(Math.sin(f.phase)) * 0.022 * walk : 0;
-    const sway = anim ? Math.sin(f.phase) * 0.028 * walk : 0;
-    const wx = f.x + sway, dx = cp.x - wx, dz = cp.z - f.z;
-    const ry = Math.atan2(dx, dz);
-    // fades: ends of the hall (wrap happens invisibly) and right at the camera
-    const fade = smooth01(CZ_MIN, CZ_MIN + CR_FADE_END, f.z) * (1 - smooth01(CZ_MAX - CR_FADE_END, CZ_MAX, f.z)) * smooth01(0.9, 2.6, Math.hypot(dx, dz));
-    const vis = fade > 0.01;
-    f.body.visible = f.refl.visible = f.shadow.visible = vis;
-    if (!vis) continue;
-    // warm pools under each ceiling fixture (z = 12 - 6.5k) light the figure a little more
-    const m = (((12 - f.z) % 6.5) + 6.5) % 6.5, dl = Math.min(m, 6.5 - m);
-    const lit = (theme === 'light' ? 0.92 : 0.74) + (theme === 'light' ? 0.08 : 0.26) * Math.exp(-dl * dl / 3.2);
-    f.mat.color.setScalar(lit * L.base); f.rmat.color.setScalar(lit);
-    f.mat.opacity = fade; f.rmat.opacity = fade * L.refl; f.smat.opacity = fade * L.sh;
-    f.body.position.set(wx, bob, f.z); f.body.rotation.y = ry;
-    f.refl.position.set(wx, -bob, f.z); f.refl.rotation.y = ry;
-    f.shadow.position.set(f.x + sway * 0.5, 0.022, f.z);
-    f.shadow.material.opacity = fade * L.sh * (1 - bob * 4);
-  }
-}
-
 let resizeRaf = 0;
 function resize() {
   if (!renderer) return;
@@ -623,8 +510,6 @@ function frame() {
   if (hover !== -1 && mode !== 'hall') hover = -1;
   if (dust && !reduceMotion) dust.position.y = Math.sin(t * 0.3) * 0.15;
 
-  updateCrowd(dt, t);
-
   // moving lights follow the camera (no allocation)
   for (let i = 0; i < camLights.length; i++) camLights[i].position.set(camera.position.x * 0.5, HALL_H - 1.2, camera.position.z - 3 - i * 11);
 
@@ -651,7 +536,6 @@ async function init() {
   buildHall();
   DOMAINS.forEach(buildStore);
   buildDust();
-  buildCrowd();
   doorMeshes = doors.map((d) => d.mesh);
   applySceneTheme();
   resize();
