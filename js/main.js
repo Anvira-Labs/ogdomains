@@ -278,7 +278,11 @@ function buildStore(d, i) {
   // click/hover target: the whole portal opening plus a margin (invisible, raycast only)
   const hit = add(K.hitGeo, K.hitMat, 0, 2.5, 0.06);
   hit.userData.index = i;
-  doors.push({ mesh: hit, mat: winMat, accent, index: i, k: 0, pool, panel, prod });
+  doors.push({
+    mesh: hit, mat: winMat, accent, index: i, k: 0, pool, panel, prod,
+    // presentation: the store reaches toward the viewer when they turn its way
+    side, present: 0, hitZ: hit.position.z, prodZ: prod.position.z,
+  });
 
   scene.add(g);
 }
@@ -436,9 +440,34 @@ function frame() {
   // hover easing (~0.25s) for every door
   for (const d of doors) {
     d.k = THREE.MathUtils.damp(d.k, d.index === hover ? 1 : 0, 14, dt);
+
+    // Turning toward a side of the corridor presents that storefront: as you look or
+    // swipe left/right while near it, the whole shopfront eases out of the wall and
+    // angles toward you, so it reads as offering itself and is far easier to hit.
+    let want = 0;
+    if (mode === 'hall') {
+      // Only stores still AHEAD of the camera are worth presenting: one level with you
+      // sits at 90° on the side wall, out of frame. Peaks a few metres before you reach it.
+      const ahead = camera.position.z - storeZ(d.index);
+      const near = ahead > 0.5 ? Math.max(0, 1 - Math.abs(ahead - 7) / 11) : 0;
+      // pointer.x is -1..1; reward turning toward this door's own side
+      const toward = Math.max(0, pointer.x * d.side);
+      want = near * near * Math.min(1, toward * 1.35) + near * near * 0.12 + d.k * 0.45;
+      want = Math.min(1, want);
+    }
+    d.present = THREE.MathUtils.damp(d.present, want, reduceMotion ? 60 : 6, dt);
+    const pr = d.present;
+    // The shell itself stays welded to the wall: the side walls are cut with a notch
+    // around each opening, so translating the portal would tear a gap and show through.
+    // Instead the store reaches out — a bigger target stepped into the corridor, the
+    // display easing forward in the recess, and light spilling further across the floor.
+    d.mesh.position.z = d.hitZ + pr * 0.95;
+    d.mesh.scale.setScalar(1 + pr * 0.3);
+    d.prod.position.z = d.prodZ + pr * 0.4;
+    d.pool.scale.set(3.4 + pr * 2.2, 3.6 + pr * 1.5, 1);
     const c = (0.73 + 0.27 * d.k) * (theme === 'light' ? 0.97 : 1);
     d.mat.color.setScalar(c);
-    d.accent.emissiveIntensity = (1.6 + d.k * 1.4) * LK.accentK;
+    d.accent.emissiveIntensity = (1.6 + d.k * 1.4 + d.present * 0.9) * LK.accentK;
     d.pool.material.opacity = (0.55 + d.k * 0.3) * LK.poolK;
     d.panel.material.opacity = (0.45 + d.k * 0.3) * LK.panelK;
     if (!reduceMotion) d.prod.rotation.y = t * 0.7;

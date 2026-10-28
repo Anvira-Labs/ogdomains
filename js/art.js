@@ -200,7 +200,25 @@ export function lobbyTexture(img, theme = 'dark') {
       const s = Math.min(940 / img.naturalWidth, 800 / img.naturalHeight);
       const w = img.naturalWidth * s, h = img.naturalHeight * s;
       const gap = 36, capH = 44, total = h + gap + capH, top = (1024 - total) / 2;
-      ctx.drawImage(img, (1024 - w) / 2, top, w, h);
+      const x = (1024 - w) / 2;
+      // Glow: a warm wash behind the mark, then layered shadow passes that bloom
+      // around the cutout's own alpha rather than around a rectangle.
+      const cx = 512, cy = top + h / 2;
+      const wash = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.78);
+      wash.addColorStop(0, th === 'light' ? 'rgba(240,120,50,.30)' : 'rgba(240,120,50,.42)');
+      wash.addColorStop(0.55, th === 'light' ? 'rgba(214,74,8,.12)' : 'rgba(214,74,8,.18)');
+      wash.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, 1024, 1024);
+      const glowCol = th === 'light' ? 'rgba(188,60,0,.60)' : 'rgba(240,120,50,.85)';
+      for (const blur of [64, 36, 18]) {
+        ctx.save();
+        ctx.shadowColor = glowCol;
+        ctx.shadowBlur = blur;
+        ctx.drawImage(img, x, top, w, h);
+        ctx.restore();
+      }
+      ctx.drawImage(img, x, top, w, h);
       drawCaption(top + h + gap + capH * 0.8, ink);
     } else drawCaption(900, ink);
     t.needsUpdate = true;

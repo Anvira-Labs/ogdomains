@@ -20,6 +20,8 @@
   --intro-shadow: 0 2px 30px #000;
   --err: #ff8a8a;
   --ok: #8de6b0;
+  --logo-glow: rgba(240, 120, 50, .85);
+  --logo-glow-soft: rgba(214, 74, 8, .55);
   color-scheme: dark;
   --display: 'Cinzel', Georgia, serif;
   --body: 'Inter', system-ui, sans-serif;
@@ -46,6 +48,8 @@
   --intro-shadow: 0 2px 24px rgba(255, 253, 248, .9);
   --err: #b3261e;
   --ok: #11693a;
+  --logo-glow: rgba(188, 60, 0, .55);
+  --logo-glow-soft: rgba(240, 120, 50, .40);
   color-scheme: light;
 }
 @media (prefers-color-scheme: light) {
@@ -71,6 +75,8 @@
     --intro-shadow: 0 2px 24px rgba(255, 253, 248, .9);
     --err: #b3261e;
     --ok: #11693a;
+    --logo-glow: rgba(188, 60, 0, .55);
+    --logo-glow-soft: rgba(240, 120, 50, .40);
     color-scheme: light;
   }
 }
@@ -87,7 +93,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .hud { position: fixed; inset: 0 0 auto 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 14px 20px; pointer-events: none; background: linear-gradient(var(--hud-grad), transparent); }
 .hud > * { pointer-events: auto; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-family: var(--display); font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
-.brand img { width: 34px; height: 34px; object-fit: contain; }
+/* Brand mark glow: stacked drop-shadows bloom around the emblem's alpha, not a box.
+   The pulse is switched off by the reduced-motion rule at the end of this file. */
+.brand img {
+  width: 34px; height: 34px; object-fit: contain;
+  filter: drop-shadow(0 0 3px var(--logo-glow)) drop-shadow(0 0 9px var(--logo-glow-soft));
+  animation: logo-pulse 3.6s ease-in-out infinite;
+}
+@keyframes logo-pulse {
+  0%, 100% { filter: drop-shadow(0 0 3px var(--logo-glow)) drop-shadow(0 0 9px var(--logo-glow-soft)); }
+  50%      { filter: drop-shadow(0 0 6px var(--logo-glow)) drop-shadow(0 0 18px var(--logo-glow-soft)); }
+}
 .brand .dim { color: var(--dim); }
 .brand:focus-visible { border-radius: 8px; }
 #dirs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
