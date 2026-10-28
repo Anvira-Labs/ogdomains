@@ -61,6 +61,7 @@ function applySceneTheme() {
   doors.forEach((d) => d.mat.color.setScalar(1)); // frame loop re-applies brightness
   (S.emblems || []).forEach((t) => t.userData.setTheme(theme));
   S.lobbyTex.userData.setTheme(theme); S.endTex.userData.setTheme(theme);
+  if (S.dec) { const D = DECOR_LOOK[theme]; S.dec.wood.color.setHex(D.wood); S.dec.pot.color.setHex(D.pot); S.dec.leaf.color.setHex(D.leaf); }
   const K = S.kit; // storefront portal kit: shared materials/textures retinted in place
   if (K) { K.stone.color.setHex(L.stone); K.plinth.color.setHex(L.plinth); K.texs.forEach((t) => t.userData.setTheme(theme)); }
 }
@@ -388,6 +389,38 @@ function buildDust() {
 }
 
 
+// ---------- corridor decorations: benches + planters against the solid wall opposite each storefront ----------
+// Instanced (5 draw calls total), no lights, never in the doors array so they can't be picked.
+const DECOR_LOOK = {
+  dark: { wood: 0x4a3322, pot: 0x6b4630, leaf: 0x35552f },
+  light: { wood: 0xb08a5c, pot: 0xd8c7a8, leaf: 0x6a9456 },
+};
+function buildDecor() {
+  const D = DECOR_LOOK[theme];
+  const wood = new THREE.MeshLambertMaterial({ color: D.wood }), pot = new THREE.MeshLambertMaterial({ color: D.pot }), leaf = new THREE.MeshLambertMaterial({ color: D.leaf });
+  S.dec = { wood, pot, leaf };
+  const benches = [], planters = [];
+  for (let i = 0; i < N; i++) { // wall opposite store i has no opening at this z
+    const s = -sideOf(i), z = storeZ(i);
+    benches.push([s, z]); planters.push([s, z - 2.5], [s, z + 2.5]);
+  }
+  const mk = (geo, mat, list) => { const m = new THREE.InstancedMesh(geo, mat, list.length); m.raycast = () => {}; scene.add(m); return m; };
+  const seat = mk(new THREE.BoxGeometry(0.5, 0.07, 1.8), wood, benches), back = mk(new THREE.BoxGeometry(0.06, 0.5, 1.8), wood, benches);
+  const legs = mk(new THREE.BoxGeometry(0.4, 0.45, 0.06), wood, benches.concat(benches));
+  const pots = mk(new THREE.CylinderGeometry(0.28, 0.22, 0.6, 16), pot, planters);
+  const leaves = mk(new THREE.SphereGeometry(0.5, 14, 10), leaf, planters.concat(planters));
+  const o = new THREE.Object3D(), put = (m, k, x, y, z, sx = 1, sy = 1, sz = 1) => { o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.updateMatrix(); m.setMatrixAt(k, o.matrix); };
+  benches.forEach(([s, z], k) => {
+    put(seat, k, s * 5.7, 0.45, z); put(back, k, s * 5.93, 0.78, z);
+    put(legs, k, s * 5.7, 0.225, z - 0.8); put(legs, k + benches.length, s * 5.7, 0.225, z + 0.8);
+  });
+  planters.forEach(([s, z], k) => {
+    put(pots, k, s * 5.45, 0.3, z);
+    put(leaves, k, s * 5.45, 1.15, z, 1, 1.25, 1);
+    put(leaves, k + planters.length, s * 5.5 + 0.08, 1.75, z + 0.06, 0.7, 0.8, 0.7);
+  });
+}
+
 let resizeRaf = 0;
 function resize() {
   if (!renderer) return;
@@ -536,6 +569,7 @@ async function init() {
   buildHall();
   DOMAINS.forEach(buildStore);
   buildDust();
+  buildDecor();
   doorMeshes = doors.map((d) => d.mesh);
   applySceneTheme();
   resize();
