@@ -14,17 +14,22 @@
     var t; try { t = localStorage.getItem('ogd-theme'); } catch (e) {}
     document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
   </script>
-  <!-- TODO: set canonical and og:url/og:image to the final absolute URL once deployed -->
-  <!-- <link rel="canonical" href="https://YOUR-DOMAIN/"> -->
+  <!-- Share-card tags need absolute URLs: crawlers fetch them without a page context,
+       so a relative path yields no preview image. Update these if the site moves to a
+       custom domain. -->
+  <link rel="canonical" href="https://anvira-labs.github.io/ogdomains/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="OGDomains">
+  <meta property="og:url" content="https://anvira-labs.github.io/ogdomains/">
   <meta property="og:title" content="OGDomains – The Domain Mall">
   <meta property="og:description" content="Walk the OGDomains mall. Each door is a premium domain name for sale.">
-  <meta property="og:image" content="assets/emblem.png"><!-- TODO: absolute URL -->
+  <meta property="og:image" content="https://anvira-labs.github.io/ogdomains/assets/emblem.png">
+  <meta property="og:image:alt" content="The OGDomains emblem.">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="OGDomains – The Domain Mall">
   <meta name="twitter:description" content="Walk the OGDomains mall. Each door is a premium domain name for sale.">
-  <meta name="twitter:image" content="assets/emblem.png"><!-- TODO: absolute URL -->
+  <meta name="twitter:image" content="https://anvira-labs.github.io/ogdomains/assets/emblem.png">
+  <meta name="twitter:image:alt" content="The OGDomains emblem.">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
