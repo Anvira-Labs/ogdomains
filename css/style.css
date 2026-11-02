@@ -272,3 +272,42 @@ dl.facts dd { margin: 0; color: var(--ink); line-height: 1.55; overflow-wrap: an
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
 }
+
+/* The guide (js/guide.js): a flat 2D animated character, drawn as SVG. The hat and head stand out above a round
+   frame; the body is clipped to the frame below its equator. Pointer-transparent; hidden inside a store. */
+#guide { position: fixed; left: 20px; bottom: 20px; z-index: 4; width: 150px; pointer-events: none; transition: opacity .3s; filter: drop-shadow(0 8px 12px rgba(0,0,0,.4)); }
+#guide svg { display: block; width: 100%; height: auto; overflow: visible; }
+#guide .g-plate { stroke: var(--gold); stroke-width: 2.5; }
+#guide .g-body { transform-box: fill-box; transform-origin: 50% 100%; animation: g-breathe 3.6s ease-in-out infinite; }
+#guide .g-sway { transform-box: fill-box; transform-origin: 50% 100%; animation: g-sway 7s ease-in-out infinite; }
+#guide .g-lid { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(0); animation: g-blink 5.2s infinite; }
+#guide .g-lid + .g-lid { animation-delay: .01s; }
+#guide #g-brows { transition: transform .25s; }
+#guide #g-brows.up { animation: g-brows .6s ease-out; }
+#guide .g-tip { transform-box: fill-box; transform-origin: 20% 100%; transition: transform .35s cubic-bezier(.3,1.6,.5,1); }
+#guide.tipping .g-tip { transform: translate(-6px, -13px) rotate(-14deg); }
+@keyframes g-breathe { 50% { transform: translateY(2.5px) scale(1.012); } }
+@keyframes g-sway { 25% { transform: rotate(1.3deg); } 75% { transform: rotate(-1.3deg); } }
+@keyframes g-blink { 0%, 92%, 100% { transform: scaleY(0); } 95% { transform: scaleY(1); } }
+@keyframes g-brows { 40% { transform: translateY(-4px); } }
+#guide.still * { animation: none !important; transition: none !important; }
+.in-store #guide, .no-gl #guide { opacity: 0; visibility: hidden; }
+@media (max-width: 700px) { #guide { width: 96px; left: 8px; bottom: 12px; } }
+
+/* The guide's speech bubble: to the right of the character on desktop, above it on phones. Its buttons are clickable. */
+#guide .g-say { position: absolute; left: calc(100% + 14px); bottom: 34px; width: min(300px, 42vw); pointer-events: auto; padding: 14px 16px 12px;
+  background: var(--chip-bg-hover, rgba(0,0,0,.8)); color: var(--ink); border: 1.5px solid var(--gold); border-radius: 16px; backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35); opacity: 0; transform: translateY(6px) scale(.98); transition: opacity .25s, transform .25s; font-size: .92rem; line-height: 1.5; }
+#guide .g-say.on { opacity: 1; transform: none; }
+#guide .g-say::before { content: ''; position: absolute; left: -9px; bottom: 26px; width: 14px; height: 14px; background: inherit; border-left: 1.5px solid var(--gold); border-bottom: 1.5px solid var(--gold); transform: rotate(45deg); }
+#guide .g-say p { margin: 0 0 10px; min-height: 2.9em; }
+#guide .g-ctl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#guide .g-ctl button { font: 600 .74rem var(--body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; cursor: pointer; }
+#guide .g-ctl button:hover { border-color: var(--gold); }
+#guide .g-ctl button[aria-pressed=true] { border-color: var(--gold); color: var(--gold-text); }
+#guide #g-close { margin-left: auto; padding: 2px 9px; font-size: 1rem; line-height: 1; }
+#guide #g-mouth { transform-box: fill-box; transform-origin: 50% 0; }
+#guide.talking #g-mouth { animation: g-talk .26s ease-in-out infinite; }
+@keyframes g-talk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.45); } }
+@media (max-width: 700px) { #guide .g-say { left: 0; bottom: calc(100% + 6px); width: calc(100vw - 24px); } #guide .g-say::before { left: 40px; bottom: -8px; transform: rotate(-45deg); border-left: 0; border-bottom: 1.5px solid var(--gold); border-right: 1.5px solid var(--gold); } }
+
