@@ -1,0 +1,6 @@
+/* Khalsa: deep blue with gold, calm and formal. A gilded dome rises behind the title. */
+:root[data-theme=khalsa] { --bg: #06143a; --bg2: #0b1f55; --ink: #f2f6ff; --dim: #b4c4ea; --a: #ffc94d; --b: #5fa8ff; --on-a: #1a1203; --line: rgba(160,190,255,.22); --card: rgba(95,168,255,.08);
+  --hero-bg: radial-gradient(ellipse 70% 55% at 50% 100%, rgba(95,168,255,.35), transparent 70%), linear-gradient(#071a48, #06143a); }
+[data-theme=khalsa] .hero::after { content: ''; position: absolute; left: 50%; bottom: -26vmin; width: 62vmin; height: 52vmin; transform: translateX(-50%); z-index: 0; border-radius: 50% 50% 0 0;
+  background: linear-gradient(90deg, rgba(184,134,11,.55), rgba(255,226,138,.7), rgba(168,118,10,.55)); opacity: .5; }
+[data-theme=khalsa] .card { border-top: 3px solid var(--a); }

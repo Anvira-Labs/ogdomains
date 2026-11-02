@@ -1,0 +1,9 @@
+/* Media: broadcast red on black, condensed type, a test-card TV beside the title. */
+:root[data-theme=media] { --bg: #0b0508; --bg2: #170a0e; --ink: #fff3ef; --dim: #d2b7b3; --a: #ff5a5f; --b: #ffd166; --on-a: #1c0204; --line: rgba(255,120,120,.24); --card: rgba(255,90,95,.07);
+  --display: 'Bebas Neue', Impact, sans-serif; --tracking: .04em; --r: 10px;
+  --hero-bg: radial-gradient(ellipse 60% 70% at 80% 40%, rgba(255,90,95,.3), transparent 70%), #0b0508; }
+[data-theme=media] .hero h1 { font-size: clamp(3.2rem, 11vw, 7.4rem); }
+[data-theme=media] .hero .art { aspect-ratio: 4/3; border: 6px solid #1d1d22; border-radius: 22px; outline: 2px solid var(--a); position: relative; box-shadow: 0 0 70px rgba(255,90,95,.35);
+  background: linear-gradient(90deg, #f2f2f2 0 14.28%, #f6d84a 0 28.56%, #3fd0d6 0 42.84%, #4ce06a 0 57.12%, #e04ce0 0 71.4%, #e84a4a 0 85.68%, #4a5ae8 0); }
+[data-theme=media] .hero .art::after { content: 'LIVE'; position: absolute; left: 14px; bottom: 14px; font: 700 1.3rem var(--display); letter-spacing: .1em; background: var(--a); color: #fff; padding: 2px 14px; border-radius: 4px; }
+[data-theme=media] .hero .art::before { content: ''; position: absolute; inset: 0; z-index: 1; background: repeating-linear-gradient(rgba(0,0,0,.18) 0 2px, transparent 2px 5px); border-radius: 14px; }

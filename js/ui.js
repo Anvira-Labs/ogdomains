@@ -68,19 +68,47 @@ modal.addEventListener('keydown', (e) => trap(e, modal));
 
 export function setBackHandler(fn) { onBack = fn; }
 
-export function renderDirectory(domains, onPick) {
+// The HUD directory. 147 chips would not fit, so it shows one chip per wing (category) that walks you to the
+// start of that stretch of corridor, plus a "find a domain" box that jumps straight into one store.
+export function renderDirectory(wings, domains, on) {
   const nav = $('#dirs');
-  nav.innerHTML = domains
-    .map((d, i) => `<button type="button" data-i="${i}" style="--a:${d.accent}" aria-label="Open store ${i + 1}: ${esc(d.name)}"><b aria-hidden="true">${String(i + 1).padStart(2, '0')}</b>${esc(d.name)}</button>`)
+  nav.innerHTML = wings
+    .map((w) => `<button type="button" data-cat="${w.no}" style="--a:${w.accent}" aria-label="Walk to ${esc(w.name)}, ${w.count} ${w.count === 1 ? 'domain' : 'domains'}"><b aria-hidden="true">${String(w.no).padStart(2, '0')}</b>${esc(w.short)}<small aria-hidden="true">${w.count}</small></button>`)
     .join('');
   nav.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-i]');
-    if (b) onPick(+b.dataset.i);
+    const b = e.target.closest('button[data-cat]');
+    if (b) on.wing(wings.find((w) => w.no === +b.dataset.cat));
   });
+
+  const input = $('#finder'), list = $('#finder-list');
+  if (!input || !list) return;
+  list.innerHTML = domains.map((d) => `<option value="${esc(d.name)}"></option>`).join('');
+  const find = (text) => {
+    const v = text.trim().toLowerCase();
+    if (!v) return -1;
+    const exact = domains.findIndex((d) => d.name.toLowerCase() === v);
+    if (exact >= 0) return exact;
+    const starts = domains.map((d, i) => (d.name.toLowerCase().startsWith(v) ? i : -1)).filter((i) => i >= 0);
+    return starts.length === 1 ? starts[0] : -1; // a unique prefix is enough; otherwise make them choose
+  };
+  input.addEventListener('change', () => {
+    const i = find(input.value);
+    if (i < 0) {
+      if (input.value.trim()) { input.setAttribute('aria-invalid', 'true'); input.title = 'Pick a domain from the list'; }
+      return;
+    }
+    input.removeAttribute('aria-invalid'); input.title = '';
+    input.value = ''; input.blur();
+    on.store(i);
+  });
+  input.addEventListener('input', () => input.removeAttribute('aria-invalid'));
 }
 
-export function markActive(i) {
-  document.querySelectorAll('#dirs button').forEach((b) => b.classList.toggle('on', +b.dataset.i === i));
+let activeCat = null;
+export function markActive(catNo) {
+  if (catNo === activeCat) return;
+  activeCat = catNo;
+  document.querySelectorAll('#dirs button').forEach((b) => b.classList.toggle('on', +b.dataset.cat === catNo));
 }
 
 const isStoreOpen_ = () => storeEl.classList.contains('open');

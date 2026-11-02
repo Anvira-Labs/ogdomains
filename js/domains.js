@@ -1,113 +1,71 @@
-// Store catalogue. Edit here to add or change a domain; the hallway builds itself from this list.
+import { CATALOGUE } from './catalogue.js';
+import { CATEGORIES, CATEGORY_BY_NO } from './categories.js';
+
+// Store catalogue. The hallway builds itself from DOMAINS, which is assembled at the bottom of this file:
+//   - HAND: optional hand-written stores with their own full site; currently empty, so the mall is exactly the spreadsheet;
+//   - CATALOGUE (catalogue.js, generated from the owner's spreadsheet): every other domain, expanded
+//     from its category (categories.js) so that all domains in a category share a look and a site theme.
+// To add one more ordinary domain, add a row to the spreadsheet and re-run tools/build-catalogue.py.
 // `facts` is a list of {k, v}; use '—' where a value is not yet known (never invent figures).
 // `sale: false` removes the buy button (used for placeholder slots).
 // `site` is the domain's own full concept site, opened from the store page; omit it if there isn't one.
-export const DOMAINS = [
-  {
-    id: 'swami',
-    name: 'Swami.si',
-    tagline: 'Spirituality × AI × human connection.',
-    theme: 'swami',
-    site: 'sites/swami/',
-    accent: '#f5c26b',
-    accent2: '#7be0ff',
+// `cat` is the category number (see categories.js).
+const HAND = []; // none at present: every door comes from the spreadsheet (see CATALOGUE)
+
+// ---- Everything below turns CATALOGUE rows into full store entries ----
+
+// What the extension is, for the "Extension" fact. Only well-known, stable facts; anything else is left generic.
+const TLD = {
+  com: 'generic TLD', org: 'generic TLD', net: 'generic TLD',
+  in: 'India country-code TLD', 'co.in': 'India second-level domain',
+  uk: 'United Kingdom country-code TLD', 'co.uk': 'United Kingdom second-level domain', 'org.uk': 'United Kingdom second-level domain',
+  si: 'Slovenia country-code TLD', us: 'United States country-code TLD', fm: 'Micronesia country-code TLD',
+  tv: 'Tuvalu country-code TLD', to: 'Tonga country-code TLD', co: 'Colombia country-code TLD',
+  ai: 'Anguilla country-code TLD', me: 'Montenegro country-code TLD', vc: 'Saint Vincent and the Grenadines country-code TLD',
+};
+const fill = (str, B, D) => str.replaceAll('{B}', B).replaceAll('{D}', D);
+
+function expand([domain, catNo]) {
+  const cat = CATEGORY_BY_NO[catNo];
+  const label = domain.split('.')[0];
+  const ext = domain.slice(label.length + 1);
+  const B = label[0].toUpperCase() + label.slice(1); // "Hindumandir": brand name used by the concept sites
+  const id = domain.replace(/[^a-z0-9]+/g, '-');
+  return {
+    id, cat: catNo, domain, brand: B, ext,
+    name: `${B}.${ext}`,
+    tagline: cat.tagline,
+    theme: cat.key,
+    signFont: cat.signFont,
+    site: `site/?d=${id}`,
+    accent: cat.accent,
+    accent2: cat.accent2,
     sale: true,
-    price: 'Available for acquisition · make an offer',
-    why: 'Short, memorable and spiritually meaningful. A name with the potential to become the identity of a next-generation SpiritualTech venture: AI companions, meditation and mindfulness platforms, immersive holographic experiences and global learning communities.',
-    buyers: ['AI & SpiritualTech startups', 'Meditation & wellness platforms', 'Digital education ventures', 'Hologram & AI-avatar studios'],
+    price: 'Make an offer',
+    why: fill(cat.why, B, domain),
+    buyers: cat.buyers,
     facts: [
-      { k: 'Extension', v: '.si (Slovenia country-code TLD)' },
+      { k: 'Extension', v: `.${ext}${TLD[ext] ? ` (${TLD[ext]})` : ' (new generic TLD)'}` },
+      { k: 'Name length', v: `${label.length} characters before the dot` },
       { k: 'Registered', v: '—' },
       { k: 'Registrar', v: '—' },
       { k: 'Transfer', v: 'Arranged with the owner after agreement' },
       { k: 'Included', v: 'Domain name only; no trademark, website or business' },
-    ],
-    signals: [
-      { t: 'AI avatars of spiritual leaders are already live at mass gatherings. Proto Hologram built one of Sadhguru for the Isha Foundation\'s Mahashivratri event.', href: 'https://www.inavateapac.com/news/article/proto-hologram-creates-ai-avatar-of-the-spiritual-leader-sadhguru-at-isha-foundations-mahashivratri' },
-      { t: 'Gurus and faith leaders are joining the chatbot trend as people turn to AI for answers.', href: 'https://www.news4jax.com/news/world/2026/08/28/need-spiritual-guidance-gurus-join-chatbot-trend-as-people-turn-to-ai-for-answers/' },
-    ],
-  },
-  {
-    id: 'bollywood',
-    name: 'Bollywood.com',
-    tagline: 'Lights. Camera. Dot com.',
-    theme: 'bollywood',
-    site: 'sites/bollywood/',
-    accent: '#ffcf4a',
-    accent2: '#ff3b5c',
-    sale: true,
-    price: 'Category-defining name · make an offer',
-    why: 'The one word the world uses for Indian cinema, as an exact-match .com. Built for audience, ticketing, streaming, fan and merchandise businesses.',
-    buyers: ['Streaming & OTT platforms', 'Ticketing & cinema chains', 'Film studios & music labels', 'Fan, news & merchandise brands'],
-    facts: [
-      { k: 'Extension', v: '.com (generic TLD)' },
-      { k: 'Registered', v: '—' },
-      { k: 'Registrar', v: '—' },
-      { k: 'Transfer', v: 'Arranged with the owner after agreement' },
-      { k: 'Included', v: 'Domain name only; no trademark, website or business' },
-    ],
-    signals: [
-      { t: 'Hindi cinema grossed ₹5,504 crore in 2025, up 18% on 2024, a 41% share of Indian box office.', href: 'https://www.hollywoodreporterindia.com/features/insight/2025-india-box-office-crosses-historic-13000-crore-as-bollywood-hits-record-high-of-5504-crore-but-how-did-other-industries-fare' },
-      { t: 'Original Hindi films made up 93% of Hindi box office in 2025.', href: 'https://www.ormaxmedia.com/stories/the-ormax-box-office-report-2025.html' },
-    ],
-  },
-  {
-    id: 'hindutample',
-    name: 'Hindutample.com',
-    tagline: 'A doorway to every darshan.',
-    theme: 'temple',
-    site: 'sites/hindutample/',
-    accent: '#ff9d3c',
-    accent2: '#ffd98a',
-    sale: true,
-    price: 'Devotional vertical · make an offer',
-    why: 'A faith-first, distinctive name for temple discovery, pooja and darshan booking, donations and community, in a space where many temples are still not online. Note the spelling: it is "Hindutample" with an "a", not the standard word "temple". That makes it a coined brand, but it will not match searches for "temple", and some buyers will see it as a typo domain.',
-    buyers: ['Pooja & darshan booking platforms', 'Temple trusts & networks', 'Devotional content & streaming', 'Pilgrimage & travel services'],
-    facts: [
-      { k: 'Extension', v: '.com (generic TLD)' },
-      { k: 'Spelling', v: '"Hindutample" (with an "a"), not the standard "temple"' },
-      { k: 'Registered', v: '—' },
-      { k: 'Registrar', v: '—' },
-      { k: 'Transfer', v: 'Arranged with the owner after agreement' },
-      { k: 'Included', v: 'Domain name only; no trademark, website or business' },
-    ],
-    signals: [
-      { t: 'Major temples already offer online pooja and darshan booking; the sector is still under-penetrated.', href: 'https://inc42.com/features/can-appsforbharat-build-the-uber-or-airbnb-for-indias-spiritual-tech-market' },
-      { t: 'India\'s religious and spiritual market is estimated at about USD 70 billion in 2025 (IMARC; estimates vary by source).', href: 'https://www.imarcgroup.com/india-religious-spiritual-market' },
-    ],
-  },
-  {
-    id: 'vipan',
-    name: 'vipan.me',
-    tagline: 'Platform engineering, end to end.',
-    theme: 'portfolio',
-    site: 'sites/vipan/',
-    accent: '#3de3c1',
-    accent2: '#8aa4ff',
-    sale: false,
-    cta: { label: 'Visit the portfolio', href: 'sites/vipan/' },
-    price: 'Not for sale · the owner\'s own site',
-    why: 'The personal site of Vipan Kumar, a Senior / Staff Platform Engineer working in AWS, Kubernetes, Kafka and GenAI platforms. This door is not a listing: it opens his portfolio.',
-    buyers: [],
-    facts: [
-      { k: 'Extension', v: '.me (Montenegro country-code TLD)' },
-      { k: 'Status', v: 'Not for sale — the owner\'s personal site' },
     ],
     signals: [],
-  },
-  {
-    id: 'slot5',
-    name: 'Slot 05',
-    tagline: 'This door is being fitted out.',
-    theme: 'soon',
-    accent: '#9aa0b4',
-    accent2: '#5b6178',
-    sale: false,
-    price: 'Coming soon',
-    why: 'The next domain joins the mall here. Check back soon.',
-    buyers: [],
-    facts: [
-    ],
-    signals: [],
-  },
-];
+  };
+}
+
+// Hallway order: category by category (the order of CATEGORIES); inside each, the hand-built stores first.
+const handNames = new Set(HAND.map((d) => d.name.toLowerCase()));
+const generated = CATALOGUE.filter(([domain]) => !handNames.has(domain)).map(expand);
+export const DOMAINS = CATEGORIES.flatMap((c) => [
+  ...HAND.filter((d) => d.cat === c.no),
+  ...generated.filter((d) => d.cat === c.no),
+]);
+
+// One entry per category, in hallway order: where its stretch of corridor begins and how many doors it has.
+export const WINGS = CATEGORIES.map((c) => {
+  const first = DOMAINS.findIndex((d) => d.cat === c.no);
+  return { ...c, first, count: DOMAINS.filter((d) => d.cat === c.no).length };
+}).filter((w) => w.count > 0);

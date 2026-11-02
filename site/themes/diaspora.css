@@ -1,0 +1,7 @@
+/* Diaspora: warm terracotta and teal, tilted collage cards, friendly serif. */
+:root[data-theme=diaspora] { --bg: #200c05; --bg2: #331509; --ink: #fff0e4; --dim: #e0bfa6; --a: #ff9f68; --b: #2ec4b6; --on-a: #2a0f05; --line: rgba(255,170,120,.28); --card: rgba(255,159,104,.1);
+  --display: 'Playfair Display', Georgia, serif; --tracking: 0; --r: 18px;
+  --hero-bg: radial-gradient(circle at 15% 25%, rgba(46,196,182,.25), transparent 40%), radial-gradient(circle at 85% 70%, rgba(255,159,104,.3), transparent 45%), #200c05; }
+[data-theme=diaspora] .hero h1 { font-weight: 700; }
+[data-theme=diaspora] .card { box-shadow: 8px 8px 0 color-mix(in srgb, var(--b) 40%, transparent); }
+[data-theme=diaspora] .chips li { border-color: var(--b); }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DOMAINS } from './domains.js';
+import { DOMAINS, WINGS } from './domains.js';
 import { windowTexture, signTexture, lobbyTexture, textPlane, wallEmblemTexture, ceilingTexture, recessTexture } from './art.js';
 import { renderDirectory, markActive, openStore, closeStore, isStoreOpen, setBackHandler, isModalOpen, closeModal } from './ui.js';
 
@@ -10,6 +10,10 @@ const sideOf = (i) => (i % 2 === 0 ? -1 : 1); // -1 = left wall, 1 = right wall
 const Z0 = 8;
 const Z1 = storeZ(N - 1) - 2;
 const HALL_W = 12, HALL_H = 6.5;
+// The hallway is ~2 km long once every domain has a door, so scroll length follows it.
+// PACE = metres of corridor walked per viewport of scrolling.
+const PACE = 21;
+document.getElementById('spacer').style.height = ((Z0 - Z1) / PACE + 1) * 100 + 'vh';
 
 const $ = (s) => document.querySelector(s);
 const root = document.documentElement;
@@ -24,7 +28,12 @@ let hover = -1;
 
 // ---------- theme (light / dark) ----------
 let scene, camera, renderer;
-const doors = []; // { mesh, mat, accent, pool, index, k }
+// Only the stores near the camera exist (see streamStores): each one owns two canvas textures and ~45
+// meshes, which 147 of them could not afford at once. `doors[i]` is sparse by store number; `live` is the
+// same objects packed for iteration; `built` also keeps what must be disposed when a store is removed.
+const doors = [];
+const live = [];
+const built = new Map();
 const camLights = [];
 const THEME_KEY = 'ogd-theme';
 function storedTheme() { try { const t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : null; } catch { return null; } }
@@ -57,7 +66,8 @@ function applySceneTheme() {
   S.dust.material.color.setHex(L.dust); S.dust.material.opacity = L.dustO;
   camLights.forEach((l, i) => { l.intensity = (i ? 30 : 45) * L.lightK; });
   S.lobbyLight.intensity = 30 * L.lobbyK;
-  doors.forEach((d) => d.mat.color.setScalar(1)); // frame loop re-applies brightness
+  live.forEach((d) => d.mat.color.setScalar(1)); // frame loop re-applies brightness
+  (S.gateTex || []).forEach((t) => t.userData.setTheme(theme));
   (S.emblems || []).forEach((t) => t.userData.setTheme(theme));
   S.lobbyTex.userData.setTheme(theme); S.endTex.userData.setTheme(theme);
   const K = S.kit; // storefront portal kit: shared materials/textures retinted in place
@@ -81,22 +91,28 @@ function applyTheme(t, persist) {
 }
 
 // ---------- directory + overlay wiring (works even without WebGL) ----------
-renderDirectory(DOMAINS, (i) => {
-  if (mode === 'store') return;
-  scrollToStore(i);
-  setTimeout(() => enterStore(i), reduceMotion ? 0 : 1100);
+renderDirectory(WINGS, DOMAINS, {
+  // a wing chip walks you to the start of that stretch of corridor
+  wing: (w) => { if (mode === 'hall') scrollToStore(w.first, 9); }, // lands just before the wing's banner
+  // the finder (and deep links) take you to one store and step inside
+  store: (i) => {
+    if (mode === 'store') return;
+    scrollToStore(i);
+    setTimeout(() => enterStore(i), reduceMotion ? 0 : 1100);
+  },
 });
 setBackHandler(() => history.state && history.state.store != null ? history.back() : exitStore());
 
 function maxScroll() { return Math.max(1, root.scrollHeight - innerHeight); }
-function scrollToStore(i) {
-  const p = (Z0 - storeZ(i)) / (Z0 - Z1);
+function scrollToStore(i, short = 0) { // `short`: stop this many metres before the door
+  const p = (Z0 - storeZ(i) - short) / (Z0 - Z1);
   scrollTo({ top: p * maxScroll(), behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
 function enterStore(i, push = true) {
   if (mode === 'store') return;
   mode = 'store'; current = i;
+  if (scene) ensureStore(i); // a jump can arrive before streaming has built the door
   root.classList.add('locked');
   document.body.classList.add('in-store');
   $('#hint').classList.remove('on');
@@ -229,8 +245,10 @@ function buildStore(d, i) {
   const add = (geo, m, x, y, zz) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, zz); g.add(o); return o; };
   const box = (w, h, dp, m, x, y, zz) => add(K.boxes[w + ',' + h + ',' + dp] || (K.boxes[w + ',' + h + ',' + dp] = new THREE.BoxGeometry(w, h, dp)), m, x, y, zz);
 
-  const accent = emissive(d.accent, 1.6);
-  const winMat = new THREE.MeshBasicMaterial({ map: windowTexture(d), color: 0xbbbbbb });
+  const mats = [], texs = [];                      // per-store resources, disposed when the store is removed
+  const own = (m) => (mats.push(m), m);
+  const accent = own(emissive(d.accent, 1.6));
+  const winMat = own(new THREE.MeshBasicMaterial({ map: windowTexture(d), color: 0xbbbbbb })); texs.push(winMat.map);
 
   // deepest layer: the store window art, flush with the back of the recess
   add(K.backGeo, winMat, 0, OH / 2, -RD + 0.002);
@@ -241,7 +259,7 @@ function buildStore(d, i) {
   add(K.threshGeo, K.threshMat, 0, 0.012, -0.1).rotation.x = -Math.PI / 2;
 
   // interior parallax layers: backlit panel, then two plinths at different depths with a glowing piece each
-  const panel = add(K.panelGeo, new THREE.MeshBasicMaterial({ map: poolTex(), color: d.accent, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), 0, 2.3, -1.0);
+  const panel = add(K.panelGeo, own(new THREE.MeshBasicMaterial({ map: poolTex(), color: d.accent, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })), 0, 2.3, -1.0);
   panel.scale.set(2.8, 4.0, 1); panel.renderOrder = 1;
   add(K.plinthA, K.plinth, -0.7, 0.4, -0.85); add(K.capA, accent, -0.7, 0.815, -0.85);
   const prod = add(K.prodGeo, accent, -0.7, 1.08, -0.85);
@@ -265,42 +283,82 @@ function buildStore(d, i) {
   box(5.0, 1.5, 0.34, K.stone, 0, 5.45, 0.17);
   box(5.2, 0.16, 0.5, K.stone, 0, 6.28, 0.25);
   box(5.2, 0.03, 0.52, S.gold, 0, 6.37, 0.26);
-  add(K.signGeo, new THREE.MeshBasicMaterial({ map: signTexture(d) }), 0, 5.45, 0.35);
+  const signMat = own(new THREE.MeshBasicMaterial({ map: signTexture(d) })); texs.push(signMat.map);
+  add(K.signGeo, signMat, 0, 5.45, 0.35);
 
   // faint warm wash on the wall around the lit opening (additive, no light)
-  const wash = add(K.washGeo, new THREE.MeshBasicMaterial({ map: poolTex(), color: 0xffb25a, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 0, 3.0, 0.02);
+  const wash = add(K.washGeo, own(new THREE.MeshBasicMaterial({ map: poolTex(), color: 0xffb25a, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })), 0, 3.0, 0.02);
   wash.scale.set(8, 8.5, 1); S.washes.push(wash);
+  wash.material.opacity = LOOK[theme].washO; wash.visible = LOOK[theme].washO > 0; // a store built mid-session must match the current theme
 
-  const pool = add(K.poolGeo, new THREE.MeshBasicMaterial({ map: poolTex(), color: d.accent, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), 0, 0.03, 1.7);
+  const pool = add(K.poolGeo, own(new THREE.MeshBasicMaterial({ map: poolTex(), color: d.accent, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })), 0, 0.03, 1.7);
   pool.scale.set(3.4, 3.6, 1); pool.rotation.x = -Math.PI / 2;
 
   // click/hover target: the whole portal opening plus a margin (invisible, raycast only)
   const hit = add(K.hitGeo, K.hitMat, 0, 2.5, 0.06);
   hit.userData.index = i;
-  doors.push({
+  const door = {
     mesh: hit, mat: winMat, accent, index: i, k: 0, pool, panel, prod,
     // presentation: the store reaches toward the viewer when they turn its way
     side, present: 0, hitZ: hit.position.z, prodZ: prod.position.z,
-  });
-
+  };
+  doors[i] = door; live.push(door);
+  built.set(i, { g, mats, texs, wash, door });
   scene.add(g);
 }
 
+function unbuildStore(i) {
+  const b = built.get(i);
+  if (!b) return;
+  scene.remove(b.g);
+  b.mats.forEach((m) => m.dispose());
+  b.texs.forEach((t) => t.dispose());          // shared geometry, the portal kit and the pool glow stay
+  const w = S.washes.indexOf(b.wash); if (w >= 0) S.washes.splice(w, 1);
+  const l = live.indexOf(b.door); if (l >= 0) live.splice(l, 1);
+  delete doors[i]; built.delete(i);
+}
+
+// ---------- streaming: keep only the stores around the camera built ----------
+const AHEAD = 88, BEHIND = 44;               // build this far in front of / behind the camera (fog hides the rest)
+const KEEP_AHEAD = 112, KEEP_BEHIND = 64;    // and only drop them beyond this, so edges don't flicker
+const BUILD_PER_FRAME = 2;
+function ensureStore(i) { if (!built.has(i)) { buildStore(DOMAINS[i], i); refreshPick(); } }
+function refreshPick() { doorMeshes = live.map((d) => d.mesh); }
+function streamStores(sync) {
+  const z = camera.position.z;
+  // while a long jump is in flight the camera crosses hundreds of metres a second: wait until it lands
+  if (!sync && mode === 'hall' && Math.abs(wantPos.z - z) > 30) return;
+  const at = (zz) => (-14 - zz) / STEP;     // store number at a given z (stores are STEP apart from z = -14)
+  const lo = Math.max(0, Math.ceil(at(z + BEHIND))), hi = Math.min(N - 1, Math.floor(at(z - AHEAD)));
+  const want = [];
+  for (let i = lo; i <= hi; i++) if (!built.has(i)) want.push(i);
+  want.sort((a, b) => Math.abs(storeZ(a) - z) - Math.abs(storeZ(b) - z));
+  let changed = false;
+  for (let k = 0; k < want.length && (sync || k < BUILD_PER_FRAME); k++) { buildStore(DOMAINS[want[k]], want[k]); changed = true; }
+  for (const i of [...built.keys()]) {
+    const dz = storeZ(i) - z;
+    if (i !== current && (dz < -KEEP_AHEAD || dz > KEEP_BEHIND)) { unbuildStore(i); changed = true; }
+  }
+  if (changed) refreshPick();
+}
+
 function buildHall() {
-  const len = 110, cz = -len / 2 + 22; // spans z 22 .. -88
+  const ZE = storeZ(N - 1) - 16.1;           // the end wall
+  const ZW = ZE - 2;                         // floor and side walls run a little past it
+  const len = 22 - ZW, cz = (22 + ZW) / 2;   // hall spans z 22 .. ZW
   const wallMat = new THREE.MeshLambertMaterial({ color: 0x15151f }); S.wall = wallMat;
   const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a0a12, roughness: 0.22, metalness: 0.65 });
   S.floor = floorMat;
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL_W, len), floorMat);
   floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, cz); scene.add(floor);
   // ceiling: baked bay pattern, one tile per 6.5 m bay; edges land on bay boundaries (z = 15.25 - 6.5k)
-  const BAY = 6.5, BAYS = 17;
+  const BAY = 6.5, BAYS = Math.ceil((15.25 - ZW) / BAY);
   S.ceilTex = ceilingTexture(BAYS, theme);
   S.ceil = new THREE.MeshBasicMaterial({ map: S.ceilTex });
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(HALL_W, BAY * BAYS), S.ceil);
   ceil.rotation.x = Math.PI / 2; ceil.position.set(0, HALL_H, 15.25 - BAY * BAYS / 2); scene.add(ceil);
   [-1, 1].forEach((s) => { // side walls are shapes with a notch cut for each storefront opening
-    const lx = (zz) => (s < 0 ? -zz : zz), x0 = Math.min(lx(22), lx(-88)), x1 = Math.max(lx(22), lx(-88));
+    const lx = (zz) => (s < 0 ? -zz : zz), x0 = Math.min(lx(22), lx(ZW)), x1 = Math.max(lx(22), lx(ZW));
     const cs = DOMAINS.map((_, i) => i).filter((i) => sideOf(i) === s).map((i) => lx(storeZ(i))).sort((p, q) => p - q);
     const sh = new THREE.Shape(); sh.moveTo(x0, 0);
     cs.forEach((c) => { sh.lineTo(c - OW, 0); sh.lineTo(c - OW, OH); sh.lineTo(c + OW, OH); sh.lineTo(c + OW, 0); });
@@ -311,59 +369,73 @@ function buildHall() {
 
   // gold trim, floor guide lines, ceiling light strips
   const gold = emissive(0xf5c26b, 0.9); S.gold = gold; S.guides = []; S.hallPools = [];
+  const trimGeo = new THREE.BoxGeometry(0.05, 0.06, 1); // unit length, stretched per run
   [-1, 1].forEach((s) => {
     // wall trims, interrupted at each storefront portal
     const cuts = DOMAINS.map((_, i) => i).filter((i) => sideOf(i) === s).map((i) => storeZ(i)).sort((p, q) => q - p);
     let cur = 22;
-    [...cuts.map((c) => [c + 2.7, c - 2.7]), [-88, -88]].forEach(([e, nxt]) => {
-      if (cur - e > 0.01) [0.25, HALL_H - 0.2].forEach((y) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, cur - e), gold); m.position.set(s * 5.97, y, (cur + e) / 2); scene.add(m); });
+    [...cuts.map((c) => [c + 2.7, c - 2.7]), [ZW, ZW]].forEach(([e, nxt]) => {
+      if (cur - e > 0.01) [0.25, HALL_H - 0.2].forEach((y) => { const m = new THREE.Mesh(trimGeo, gold); m.scale.z = cur - e; m.position.set(s * 5.97, y, (cur + e) / 2); scene.add(m); });
       cur = nxt;
     });
     const gm = emissive(0xf5c26b, 0.5); S.guides.push(gm);
     const f = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.01, len), gm); f.position.set(s * 1.4, 0.01, cz); scene.add(f);
   });
-  // warm fixtures, one per bay on the centre line; glow + floor pool line up under each (no real lights)
+  // Warm fixtures, one per bay on the centre line; glow + floor pool line up under each (no real lights).
+  // There are ~300 bays, so each repeated part is ONE InstancedMesh instead of 300 meshes.
   const strip = emissive(0xffc27a, 2.2); S.strip = strip; S.glows = [];
   S.beam = new THREE.MeshBasicMaterial({ color: 0x1c140d });
-  const beamGeo = new THREE.BoxGeometry(HALL_W, 0.34, 0.3), beamTrim = new THREE.BoxGeometry(HALL_W, 0.03, 0.34);
-  for (let k = 0; k <= 15; k++) { // beams on bay boundaries
-    const bz = 15.25 - BAY * k;
-    const b = new THREE.Mesh(beamGeo, S.beam); b.position.set(0, HALL_H - 0.17, bz); scene.add(b);
-    const tr = new THREE.Mesh(beamTrim, gold); tr.position.set(0, HALL_H - 0.35, bz); scene.add(tr);
-  }
-  const bezelGeo = new THREE.CylinderGeometry(0.72, 0.72, 0.05, 32), lampGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.06, 32);
-  const glowGeo = new THREE.PlaneGeometry(1, 1), poolGeo = new THREE.PlaneGeometry(1, 1);
-  for (let k = 0; k < 15; k++) {
-    const z = 12 - BAY * k;
-    const bz = new THREE.Mesh(bezelGeo, gold); bz.position.set(0, HALL_H - 0.03, z); scene.add(bz);
-    const lamp = new THREE.Mesh(lampGeo, strip); lamp.position.set(0, HALL_H - 0.07, z); scene.add(lamp);
-    const gl = new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({ map: poolTex(), color: 0xffb860, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
-    gl.scale.set(5.5, 4.5, 1); gl.rotation.x = Math.PI / 2; gl.position.set(0, HALL_H - 0.02, z); scene.add(gl); S.glows.push(gl);
-    // floor pool directly beneath
-    const pl = new THREE.Mesh(poolGeo, new THREE.MeshBasicMaterial({ map: poolTex(), color: 0xffbf70, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-    S.hallPools.push(pl); pl.scale.set(6.5, 6.0, 1); pl.rotation.x = -Math.PI / 2; pl.position.set(0, 0.015, z); scene.add(pl);
-  }
+  const dummy = new THREE.Object3D();
+  const instanced = (geo, mat, placements) => {   // placements: [x, y, z, rotX, scaleX, scaleY]
+    const m = new THREE.InstancedMesh(geo, mat, placements.length);
+    placements.forEach(([x, y, z, rx = 0, sx = 1, sy = 1], n) => {
+      dummy.position.set(x, y, z); dummy.rotation.set(rx, 0, 0); dummy.scale.set(sx, sy, 1); dummy.updateMatrix();
+      m.setMatrixAt(n, dummy.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true; scene.add(m);
+    return m;
+  };
+  const along = (n, f) => Array.from({ length: n }, (_, k) => f(k));
+  const beamZ = (k) => 15.25 - BAY * k, lampZ = (k) => 12 - BAY * k, lamps = BAYS - 1;
+  instanced(new THREE.BoxGeometry(HALL_W, 0.34, 0.3), S.beam, along(BAYS + 1, (k) => [0, HALL_H - 0.17, beamZ(k)]));       // beams on bay boundaries
+  instanced(new THREE.BoxGeometry(HALL_W, 0.03, 0.34), gold, along(BAYS + 1, (k) => [0, HALL_H - 0.35, beamZ(k)]));
+  instanced(new THREE.CylinderGeometry(0.72, 0.72, 0.05, 32), gold, along(lamps, (k) => [0, HALL_H - 0.03, lampZ(k)]));    // bezel
+  instanced(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 32), strip, along(lamps, (k) => [0, HALL_H - 0.07, lampZ(k)]));     // lamp
+  const glowMat = new THREE.MeshBasicMaterial({ map: poolTex(), color: 0xffb860, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  S.glows.push(instanced(new THREE.PlaneGeometry(1, 1), glowMat, along(lamps, (k) => [0, HALL_H - 0.02, lampZ(k), Math.PI / 2, 5.5, 4.5])));
+  const poolMat = new THREE.MeshBasicMaterial({ map: poolTex(), color: 0xffbf70, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  S.hallPools.push(instanced(new THREE.PlaneGeometry(1, 1), poolMat, along(lamps, (k) => [0, 0.015, lampZ(k), -Math.PI / 2, 6.5, 6.0])));
 
   // end wall
   const end = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5), new THREE.MeshBasicMaterial({ map: (S.endTex = textPlane('MORE DOORS OPENING SOON', 'OGDomains.com', theme)), transparent: true }));
   end.position.set(0, 3, storeZ(N - 1) - 16); scene.add(end);
   const endWall = new THREE.Mesh(new THREE.PlaneGeometry(HALL_W, HALL_H), wallMat);
-  endWall.position.set(0, HALL_H / 2, storeZ(N - 1) - 16.1); scene.add(endWall);
+  endWall.position.set(0, HALL_H / 2, ZE); scene.add(endWall);
 
-  // brand emblems on the walls: hand-authored (deterministic) layout, sparse, clear of storefront windows/signs
-  // z/side chosen at the wall segments opposite a store, so nothing shares a wall span with a window or sign
+  // Brand emblems on the walls, on the wall OPPOSITE every third store: stores alternate sides, so the
+  // opposite wall is clear of windows and signs there. Three variants, one shared texture + material each.
   S.emblems = [];
-  const EMB = [
-    [-1, -27, 'monogram', 2.0, 4.1], [-1, -53, 'seal', 2.3, 3.8], [-1, -79, 'wordmark', 3.8, 4.3], [-1, -7, 'seal', 1.7, 4.4],
-    [1, -14, 'wordmark', 3.6, 4.0], [1, -40, 'seal', 2.1, 4.2], [1, -66, 'monogram', 2.2, 3.9], [1, -6, 'monogram', 1.6, 4.3],
-  ];
-  const embTex = {};
-  EMB.forEach(([s, z, v, w, y]) => {
-    const tx = embTex[v] || (embTex[v] = wallEmblemTexture(v, theme)); // one texture per variant, shared
-    if (!S.emblems.includes(tx)) S.emblems.push(tx);
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, v === 'wordmark' ? w / 4 : w),
-      new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
-    mesh.rotation.y = s < 0 ? Math.PI / 2 : -Math.PI / 2; mesh.position.set(s * (HALL_W / 2 - 0.03), y, z); scene.add(mesh);
+  const EMB = [['monogram', 2.0, 4.1], ['seal', 2.3, 3.8], ['wordmark', 3.8, 4.3]];
+  const embMat = EMB.map(([v]) => {
+    const tx = wallEmblemTexture(v, theme); S.emblems.push(tx);
+    return new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  });
+  const embGeo = EMB.map(([v, w]) => new THREE.PlaneGeometry(w, v === 'wordmark' ? w / 4 : w));
+  for (let i = 1, n = 0; i < N; i += 3, n++) {
+    const s = -sideOf(i), v = n % EMB.length;
+    const mesh = new THREE.Mesh(embGeo[v], embMat[v]);
+    mesh.rotation.y = s < 0 ? Math.PI / 2 : -Math.PI / 2; mesh.position.set(s * (HALL_W / 2 - 0.03), EMB[v][2], storeZ(i)); scene.add(mesh);
+  }
+
+  // Wing banners: one hangs across the corridor where each category's stretch of doors begins.
+  S.gateTex = [];
+  const rodGeo = new THREE.BoxGeometry(0.03, 1.5, 0.03), bannerGeo = new THREE.PlaneGeometry(5.4, 1.35);
+  WINGS.forEach((w) => {
+    const z = storeZ(w.first) + 5;
+    const tx = textPlane(w.short, `${w.count} ${w.count === 1 ? 'door' : 'doors'}`, theme); S.gateTex.push(tx);
+    const banner = new THREE.Mesh(bannerGeo, new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false }));
+    banner.position.set(0, 4.85, z); scene.add(banner);
+    [-2.5, 2.5].forEach((x) => { const r = new THREE.Mesh(rodGeo, gold); r.position.set(x, HALL_H - 0.75, z); scene.add(r); });
   });
 
   // lobby sign: hangs over the entrance, camera passes beneath it
@@ -378,14 +450,23 @@ function buildHall() {
   const lobbyLight = new THREE.PointLight(0xf5c26b, 30, 14, 2); S.lobbyLight = lobbyLight; lobbyLight.position.set(0, 3.2, 1); scene.add(lobbyLight);
 }
 
+// Dust only needs to exist near the camera, so a fixed pattern is re-laid around it every frame:
+// each mote keeps a world position modulo DUST_SPAN, so it stays put as you walk past (real parallax).
+const DUST_SPAN = 100, DUST_N = 420;
+let dustU;
 function buildDust() {
-  const n = 420, pos = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - 0.5) * 11; pos[i * 3 + 1] = Math.random() * HALL_H; pos[i * 3 + 2] = 14 - Math.random() * 100; }
+  const pos = new Float32Array(DUST_N * 3); dustU = new Float32Array(DUST_N);
+  for (let i = 0; i < DUST_N; i++) { pos[i * 3] = (Math.random() - 0.5) * 11; pos[i * 3 + 1] = Math.random() * HALL_H; dustU[i] = Math.random() * DUST_SPAN; }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   dust = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffe9b8, size: 0.04, transparent: true, opacity: 0.55, depthWrite: false }));
-  S.dust = dust; scene.add(dust);
+  dust.frustumCulled = false; // its bounds are rewritten every frame
+  S.dust = dust; scene.add(dust); layDust();
 }
-
+function layDust() {
+  const a = dust.geometry.attributes.position, z0 = camera.position.z - (DUST_SPAN - 14);
+  for (let i = 0; i < DUST_N; i++) a.setZ(i, -dustU[i] + DUST_SPAN * Math.ceil((z0 + dustU[i]) / DUST_SPAN));
+  a.needsUpdate = true;
+}
 
 let resizeRaf = 0;
 function resize() {
@@ -435,6 +516,7 @@ function frame() {
   const dt = Math.min(raw, 0.05);
   const t = clock.elapsedTime;
   sampleFrame(raw);
+  streamStores(false);
 
   if (isMobile) {
     let tgt = 0, idx = -1;
@@ -449,7 +531,7 @@ function frame() {
 
   const LK = LOOK[theme];
   // hover easing (~0.25s) for every door
-  for (const d of doors) {
+  for (const d of live) {
     d.k = THREE.MathUtils.damp(d.k, d.index === hover ? 1 : 0, 14, dt);
 
     // Turning toward a side of the corridor presents that storefront: as you look or
@@ -502,8 +584,8 @@ function frame() {
       // nearest store gets highlighted in the directory
       let near = -1, best = 8;
       for (let i = 0; i < N; i++) { const dz = Math.abs(z - storeZ(i)); if (dz < best) { best = dz; near = i; } }
-      markActive(near);
-      const h = isMobile ? (steerIdx >= 0 && doors[steerIdx].present > 0.6 ? steerIdx : -1) : pick();
+      markActive(near >= 0 ? DOMAINS[near].cat : -1);
+      const h = isMobile ? (steerIdx >= 0 && doors[steerIdx] && doors[steerIdx].present > 0.6 ? steerIdx : -1) : pick();
       if (h !== hover) {
         hover = h;
         if (h >= 0) { hintEl.textContent = `Enter ${DOMAINS[h].name}`; hintEl.classList.add('on'); } else hintEl.classList.remove('on');
@@ -518,13 +600,22 @@ function frame() {
     camera.lookAt(look);
   }
   if (hover !== -1 && mode !== 'hall') hover = -1;
-  if (dust && !reduceMotion) dust.position.y = Math.sin(t * 0.3) * 0.15;
+  if (dust) { layDust(); if (!reduceMotion) dust.position.y = Math.sin(t * 0.3) * 0.15; }
 
   // moving lights follow the camera (no allocation)
   for (let i = 0; i < camLights.length; i++) camLights[i].position.set(camera.position.x * 0.5, HALL_H - 1.2, camera.position.z - 3 - i * 11);
 
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
+}
+
+// '#<id>' opens that store; '#hall-<id>' returns you to the hallway standing at that door.
+function deepLink() {
+  const hall = /^#hall-(.+)$/.exec(location.hash);
+  const idx = hall
+    ? DOMAINS.findIndex((d) => d.id === hall[1])
+    : DOMAINS.findIndex((d) => '#' + d.id === location.hash);
+  return { idx, hall };
 }
 
 const canvasEl = $('#gl');
@@ -544,9 +635,11 @@ async function init() {
   S.amb = new THREE.AmbientLight(0x7a7aa0, 1.5); scene.add(S.amb);
 
   buildHall();
-  DOMAINS.forEach(buildStore);
   buildDust();
-  doorMeshes = doors.map((d) => d.mesh);
+  // Land the camera where a deep link points before building, so the right stores exist on the first frame.
+  const deep = deepLink();
+  if (deep.idx >= 0) camera.position.set(0, 1.7, storeZ(deep.idx) + (deep.hall ? 7 : 4));
+  streamStores(true);
   applySceneTheme();
   resize();
   addEventListener('resize', onResize);
@@ -559,7 +652,7 @@ async function init() {
     pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     let h = pick();
     // touch assist: a tap on the side of the nearly presented storefront counts as a tap on it
-    if (h < 0 && isMobile && mode === 'hall' && steerIdx >= 0 && doors[steerIdx].present > 0.5 && pointer.x * doors[steerIdx].side > 0.15) h = steerIdx;
+    if (h < 0 && isMobile && mode === 'hall' && steerIdx >= 0 && doors[steerIdx] && doors[steerIdx].present > 0.5 && pointer.x * doors[steerIdx].side > 0.15) h = steerIdx;
     if (h >= 0) enterStore(h);
   });
 
@@ -567,12 +660,9 @@ async function init() {
   try { if (renderer.compileAsync) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera); } catch {}
   renderer.render(scene, camera);
   $('#loading').classList.add('gone');
-  // Deep links. '#hindutample' opens that store; '#hall-hindutample' returns you to the
+  // Deep links. '#<id>' opens that store; '#hall-<id>' returns you to the
   // hallway standing at that door, which is where a domain's own site sends you back to.
-  const hall = /^#hall-(.+)$/.exec(location.hash);
-  const idx = hall
-    ? DOMAINS.findIndex((d) => d.id === hall[1])
-    : DOMAINS.findIndex((d) => '#' + d.id === location.hash);
+  const { idx, hall } = deep;
   if (idx >= 0) {
     const p = (Z0 - storeZ(idx)) / (Z0 - Z1);
     scrollTo(0, p * maxScroll());

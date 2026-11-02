@@ -1,0 +1,8 @@
+/* Events: poster-bright, magenta and gold, bunting across the top, a fireworks glow. */
+:root[data-theme=events] { --bg: #170526; --bg2: #260a3c; --ink: #fff2fb; --dim: #e1bcd9; --a: #ff7ab6; --b: #ffd34d; --on-a: #240414; --line: rgba(255,150,210,.26); --card: rgba(255,122,182,.09);
+  --display: 'Bebas Neue', Impact, sans-serif; --tracking: .05em; --r: 20px;
+  --hero-bg: radial-gradient(circle at 20% 30%, rgba(255,211,77,.28), transparent 38%), radial-gradient(circle at 80% 60%, rgba(122,224,255,.2), transparent 40%), #170526; }
+[data-theme=events] .hero::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 56px; z-index: 0;
+  background: conic-gradient(from 150deg at 50% 0, #ff7ab6 0 60deg, transparent 0) 0 0 / 56px 56px, conic-gradient(from 150deg at 50% 0, #ffd34d 0 60deg, transparent 0) 28px 0 / 56px 56px; opacity: .85; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+[data-theme=events] .hero h1 { font-size: clamp(3.4rem, 12vw, 8rem); text-shadow: 4px 4px 0 var(--b); }
+[data-theme=events] .hero h1 .x { color: var(--b); text-shadow: 4px 4px 0 var(--a); }

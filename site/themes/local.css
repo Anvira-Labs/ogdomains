@@ -1,0 +1,6 @@
+/* Local: map-blue with a street-grid, amber route line and a location pin. */
+:root[data-theme=local] { --bg: #06182a; --bg2: #0b2a46; --ink: #eef7ff; --dim: #a9c4dc; --a: #4cc9f0; --b: #f4a261; --on-a: #031420; --line: rgba(120,200,240,.26); --card: rgba(76,201,240,.07);
+  --display: 'Space Grotesk', system-ui, sans-serif; --tracking: -.02em; --r: 14px;
+  --hero-bg: radial-gradient(ellipse 60% 60% at 70% 50%, rgba(76,201,240,.22), transparent 70%), #06182a; }
+[data-theme=local] .hero .wrap::after { content: ''; position: absolute; right: 4%; top: 6%; width: 74px; height: 74px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--b); box-shadow: 0 0 0 10px rgba(244,162,97,.2), 0 0 60px rgba(244,162,97,.5); }
+[data-theme=local] .btn.ghost { border-style: dashed; }

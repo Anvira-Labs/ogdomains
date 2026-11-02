@@ -1,0 +1,8 @@
+/* Restricted: sober sage and stone, plain type, no decoration. Compliance-first. */
+:root[data-theme=restricted] { --bg: #eef1ec; --bg2: #e2e7df; --ink: #1d2a21; --dim: #4d5d52; --a: #3f6b4d; --b: #8a8f55; --on-a: #ffffff; --line: rgba(29,42,33,.2); --card: #f8faf6;
+  --display: 'Inter', system-ui, sans-serif; --tracking: -.01em; --r: 8px; color-scheme: light; --hero-bg: #e6ebe3; }
+[data-theme=restricted] .hero h1 { font-weight: 600; }
+[data-theme=restricted] .top { background: color-mix(in srgb, var(--bg) 92%, transparent); }
+[data-theme=restricted] form.enq .err { color: #b42318; }
+[data-theme=restricted] form.enq input { background: #fff; }
+[data-theme=restricted] .kicker::after { content: '  ·  18+ only'; letter-spacing: .12em; }

@@ -1,0 +1,9 @@
+/* Education: a light, paper-and-green theme with ruled-notebook cards. */
+:root[data-theme=education] { --bg: #f7f3e8; --bg2: #ece6d3; --ink: #14281b; --dim: #4b6254; --a: #1f7a45; --b: #d6a21a; --on-a: #ffffff; --line: rgba(20,40,27,.18); --card: #fffdf6;
+  --display: 'Playfair Display', Georgia, serif; --tracking: 0; --r: 10px; color-scheme: light;
+  --hero-bg: linear-gradient(90deg, transparent 0 46px, rgba(214,60,60,.4) 46px 48px, transparent 48px), repeating-linear-gradient(transparent 0 35px, rgba(60,110,190,.22) 35px 36px), #fbf8ee; }
+[data-theme=education] .top { background: color-mix(in srgb, var(--bg) 90%, transparent); }
+[data-theme=education] .hero h1 .x { color: var(--b); }
+[data-theme=education] .card { box-shadow: 0 2px 0 rgba(20,40,27,.08); }
+[data-theme=education] form.enq .err { color: #b42318; }
+[data-theme=education] form.enq input { background: #fff; }

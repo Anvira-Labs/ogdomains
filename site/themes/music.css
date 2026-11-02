@@ -1,0 +1,7 @@
+/* Music: warm wood and brass, editorial serif; a drum-skin ring pattern. */
+:root[data-theme=music] { --bg: #1a0f06; --bg2: #26160a; --ink: #fbefd9; --dim: #d4bd98; --a: #e0ad4d; --b: #c07a45; --on-a: #231304; --line: rgba(224,173,77,.26); --card: rgba(224,173,77,.07);
+  --display: 'Playfair Display', Georgia, serif; --tracking: 0; --r: 6px;
+  --hero-bg: radial-gradient(ellipse 60% 80% at 90% 50%, rgba(224,173,77,.22), transparent 70%), #1a0f06; }
+[data-theme=music] .hero::after { content: ''; position: absolute; right: -14vmin; top: 50%; width: 70vmin; height: 70vmin; transform: translateY(-50%); border-radius: 50%; z-index: 0;
+  background: radial-gradient(circle, #1a0f06 0 12%, transparent 12.5%), repeating-radial-gradient(circle, transparent 0 18px, rgba(224,173,77,.2) 18px 20px); opacity: .8; }
+[data-theme=music] .hero h1 { font-weight: 700; font-style: italic; }

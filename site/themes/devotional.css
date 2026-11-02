@@ -1,0 +1,6 @@
+/* Devotional: warm lamp-light, saffron and gold, serif display type, a ring pattern like a rangoli. */
+:root[data-theme=devotional] { --bg: #170b03; --bg2: #24110a; --ink: #fff1dc; --dim: #d9bf9f; --a: #ffa94d; --b: #ffe08a; --on-a: #2a1204; --line: rgba(255,200,130,.22); --card: rgba(255,169,77,.07);
+  --hero-bg: radial-gradient(ellipse 80% 60% at 50% 105%, rgba(255,150,50,.5), transparent 65%), linear-gradient(#1c0d04, #170b03); }
+[data-theme=devotional] .hero::after { content: ''; position: absolute; left: 50%; bottom: -34vmin; width: 90vmin; height: 90vmin; transform: translateX(-50%); border-radius: 50%; z-index: 0;
+  background: repeating-radial-gradient(circle, transparent 0 22px, rgba(255,200,130,.16) 22px 24px); }
+[data-theme=devotional] .btn { box-shadow: 0 0 28px rgba(255,169,77,.35); }

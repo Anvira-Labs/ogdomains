@@ -148,6 +148,175 @@ const painters = {
     ctx.fillText('View work →', 70, 650);
   },
 
+  // ---- One window per category. All 12 are drawn from simple shapes; no text, so any domain name fits. ----
+  devotional(ctx) {
+    vgrad(ctx, W, H, [[0, '#2a0f02'], [0.55, '#7a2d06'], [1, '#160802']]);
+    glow(ctx, 256, 430, 320, 'rgba(255,169,77,.45)');
+    ctx.strokeStyle = 'rgba(255,224,138,.55)'; ctx.lineWidth = 3;           // rangoli rings
+    [60, 100, 140, 180].forEach((r, i) => { ctx.beginPath(); ctx.arc(256, 560, r, Math.PI, 0); ctx.stroke(); if (i % 2) { ctx.setLineDash([6, 10]); ctx.stroke(); ctx.setLineDash([]); } });
+    ctx.fillStyle = 'rgba(20,8,2,.92)';                                      // temple spire, stacked tiers
+    [[256, 120, 26], [256, 170, 52], [256, 235, 84], [256, 315, 118], [256, 410, 150]].forEach(([x, y, hw], i, a) => {
+      const bottom = i + 1 < a.length ? a[i + 1][1] : 520;
+      ctx.beginPath(); ctx.moveTo(x - hw * 0.7, bottom); ctx.lineTo(x - hw * 0.45, y); ctx.lineTo(x + hw * 0.45, y); ctx.lineTo(x + hw * 0.7, bottom); ctx.fill();
+    });
+    ctx.fillRect(110, 520, 292, 70);
+    ctx.fillStyle = '#ffe08a'; ctx.fillRect(256 - 3, 70, 6, 52);              // kalash + flag
+    ctx.beginPath(); ctx.moveTo(259, 74); ctx.lineTo(300, 88); ctx.lineTo(259, 102); ctx.fill();
+    const flame = ctx.createRadialGradient(256, 560, 2, 256, 548, 40);        // diya
+    flame.addColorStop(0, '#fff6c8'); flame.addColorStop(1, 'rgba(255,169,77,0)');
+    ctx.fillStyle = flame; ctx.beginPath(); ctx.ellipse(256, 548, 22, 38, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.moveTo(206, 574); ctx.quadraticCurveTo(256, 640, 306, 574); ctx.closePath(); ctx.fill();
+  },
+  khalsa(ctx) {
+    vgrad(ctx, W, H, [[0, '#06143a'], [0.6, '#123a7a'], [1, '#050c1f']]);
+    glow(ctx, 256, 380, 300, 'rgba(255,201,77,.28)');
+    const dome = (x, y, r) => {                                              // gilded dome on a drum
+      const g = ctx.createLinearGradient(x - r, 0, x + r, 0);
+      g.addColorStop(0, '#b8860b'); g.addColorStop(0.5, '#ffe28a'); g.addColorStop(1, '#a8760a');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.fill();
+      ctx.fillRect(x - r * 0.12, y - r * 1.35, r * 0.24, r * 0.4);
+      ctx.beginPath(); ctx.arc(x, y - r * 1.4, r * 0.1, 0, Math.PI * 2); ctx.fill();
+    };
+    dome(256, 330, 110); dome(112, 400, 52); dome(400, 400, 52);
+    ctx.fillStyle = '#eef3ff'; ctx.fillRect(130, 330, 252, 190);              // white marble body + arches
+    ctx.fillStyle = '#0b2257';
+    for (let k = 0; k < 4; k++) { const x = 156 + k * 62; ctx.beginPath(); ctx.moveTo(x, 520); ctx.lineTo(x, 430); ctx.arc(x + 18, 430, 18, Math.PI, 0); ctx.lineTo(x + 36, 520); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(180,210,255,.35)'; ctx.lineWidth = 3;            // reflection ripples
+    for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.moveTo(60 + k * 8, 560 + k * 22); ctx.lineTo(452 - k * 8, 560 + k * 22); ctx.stroke(); }
+  },
+  media(ctx) {
+    vgrad(ctx, W, H, [[0, '#1a0407'], [0.6, '#5c0f18'], [1, '#0c0204']]);
+    glow(ctx, 256, 400, 300, 'rgba(255,90,95,.35)');
+    ctx.strokeStyle = '#f2d9a0'; ctx.lineWidth = 4;                           // antenna
+    ctx.beginPath(); ctx.moveTo(256, 200); ctx.lineTo(190, 90); ctx.moveTo(256, 200); ctx.lineTo(322, 90); ctx.stroke();
+    ctx.fillStyle = '#0a0a0e'; ctx.beginPath(); ctx.roundRect(70, 200, 372, 330, 34); ctx.fill();
+    ctx.strokeStyle = '#ff5a5f'; ctx.lineWidth = 5; ctx.stroke();
+    const bars = ['#f2f2f2', '#f6d84a', '#3fd0d6', '#4ce06a', '#e04ce0', '#e84a4a', '#4a5ae8'];
+    bars.forEach((c, k) => { ctx.fillStyle = c; ctx.fillRect(98 + k * 45, 228, 45, 220); });
+    ctx.fillStyle = '#0a0a0e'; ctx.fillRect(98, 448, 315, 54);
+    ctx.fillStyle = '#ff5a5f'; ctx.beginPath(); ctx.roundRect(112, 462, 76, 28, 14); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(130, 476, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(144, 472, 32, 8);
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; for (let y = 0; y < H; y += 5) ctx.fillRect(0, y, W, 2);
+  },
+  events(ctx) {
+    vgrad(ctx, W, H, [[0, '#1a0630'], [0.55, '#5a1456'], [1, '#12041f']]);
+    glow(ctx, 256, 360, 300, 'rgba(255,122,182,.32)');
+    const burst = (x, y, r, c) => { ctx.strokeStyle = c; ctx.lineWidth = 4; for (let k = 0; k < 18; k++) { const a = k * Math.PI / 9; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * 0.35, y + Math.sin(a) * r * 0.35); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke(); } };
+    burst(160, 280, 90, '#ffd34d'); burst(360, 220, 70, '#ff7ab6'); burst(300, 400, 80, '#7be0ff');
+    const spot = ctx.createLinearGradient(0, 560, 0, 768);                     // stage
+    spot.addColorStop(0, '#2b0c3d'); spot.addColorStop(1, '#0a0212'); ctx.fillStyle = spot; ctx.fillRect(0, 560, W, 208);
+    ctx.fillStyle = 'rgba(255,211,77,.18)'; ctx.beginPath(); ctx.moveTo(150, 0); ctx.lineTo(210, 0); ctx.lineTo(300, 600); ctx.lineTo(110, 600); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(360, 0); ctx.lineTo(420, 0); ctx.lineTo(480, 600); ctx.lineTo(300, 600); ctx.fill();
+    ctx.strokeStyle = '#ffd34d'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 36); ctx.quadraticCurveTo(256, 100, 512, 36); ctx.stroke();  // bunting
+    ['#ff7ab6', '#ffd34d', '#7be0ff', '#a78bfa', '#ff7ab6', '#ffd34d', '#7be0ff'].forEach((c, k) => {
+      const x = 40 + k * 72, y = 36 + Math.sin((x / 512) * Math.PI) * 38;
+      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x - 22, y); ctx.lineTo(x + 22, y + 6); ctx.lineTo(x, y + 52); ctx.fill();
+    });
+  },
+  music(ctx) {
+    vgrad(ctx, W, H, [[0, '#1c0f06'], [0.6, '#4a2a12'], [1, '#0f0703']]);
+    glow(ctx, 256, 430, 300, 'rgba(217,164,65,.38)');
+    const drum = (cx, cy, rx, ry, base, ring) => {                             // a tabla: skin, ring, centre
+      ctx.fillStyle = base; ctx.beginPath(); ctx.ellipse(cx, cy + 120, rx, ry * 1.15, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(cx - rx, cy, rx * 2, 120); ctx.beginPath(); ctx.ellipse(cx, cy + 120, rx, ry, 0, 0, Math.PI); ctx.fill();
+      ctx.fillStyle = ring; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ece1c8'; ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.8, ry * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#16100a'; ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.36, ry * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+    };
+    drum(160, 420, 90, 40, '#7a4a22', '#2a1a0c'); drum(350, 450, 100, 44, '#a2652c', '#2a1a0c');
+    ctx.strokeStyle = 'rgba(217,164,65,.7)'; ctx.lineWidth = 3;               // sound waves
+    [0, 1, 2].forEach((k) => { ctx.beginPath(); ctx.arc(256, 190, 36 + k * 30, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke(); });
+    ctx.fillStyle = '#d9a441'; ctx.beginPath(); ctx.arc(256, 190, 10, 0, Math.PI * 2); ctx.fill();
+  },
+  tech(ctx) {
+    vgrad(ctx, W, H, [[0, '#031412'], [1, '#07101f']]);
+    ctx.strokeStyle = 'rgba(61,227,193,.12)'; ctx.lineWidth = 1;
+    for (let k = 0; k < W; k += 32) { ctx.beginPath(); ctx.moveTo(k, 0); ctx.lineTo(k, H); ctx.stroke(); }
+    for (let k = 0; k < H; k += 32) { ctx.beginPath(); ctx.moveTo(0, k); ctx.lineTo(W, k); ctx.stroke(); }
+    glow(ctx, 256, 380, 280, 'rgba(61,227,193,.22)');
+    ctx.fillStyle = '#04100f'; ctx.beginPath(); ctx.roundRect(56, 170, 400, 380, 14); ctx.fill();
+    ctx.strokeStyle = '#3de3c1'; ctx.lineWidth = 3; ctx.stroke();
+    ['#ff5f56', '#ffbd2e', '#27c93f'].forEach((c, k) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(82 + k * 26, 196, 7, 0, Math.PI * 2); ctx.fill(); });
+    const line = (y, a, w, c) => { ctx.fillStyle = '#3de3c1'; ctx.fillRect(80, y, 14, 14); ctx.fillStyle = c; ctx.fillRect(108 + a, y, w, 14); };
+    line(240, 0, 150, '#a8f5e4'); line(280, 30, 210, '#7aa2ff'); line(320, 30, 120, '#a8f5e4'); line(360, 0, 190, '#7aa2ff'); line(400, 30, 160, '#a8f5e4');
+    ctx.fillStyle = '#3de3c1'; ctx.fillRect(80, 450, 14, 24); ctx.fillStyle = 'rgba(61,227,193,.25)'; ctx.fillRect(108, 452, 220, 20);
+    ctx.fillStyle = '#7aa2ff'; ctx.font = '700 70px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText('{ }', 256, 120);
+  },
+  apps(ctx) {
+    vgrad(ctx, W, H, [[0, '#120a2e'], [0.6, '#2c1766'], [1, '#080414']]);
+    glow(ctx, 256, 400, 320, 'rgba(167,139,250,.38)');
+    ctx.fillStyle = '#0b0a14'; ctx.beginPath(); ctx.roundRect(136, 100, 240, 500, 38); ctx.fill();
+    ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 5; ctx.stroke();
+    const scr = ctx.createLinearGradient(0, 124, 0, 576); scr.addColorStop(0, '#34d3ee'); scr.addColorStop(1, '#a78bfa');
+    ctx.fillStyle = scr; ctx.beginPath(); ctx.roundRect(152, 126, 208, 448, 26); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; [[170, 160, 150], [170, 190, 100]].forEach(([x, y, w]) => { ctx.beginPath(); ctx.roundRect(x, y, w, 16, 8); ctx.fill(); });
+    ctx.fillStyle = 'rgba(255,255,255,.28)';                                  // chat bubbles
+    [[170, 250, 120, 40], [222, 306, 120, 40], [170, 362, 140, 40]].forEach(([x, y, w, h]) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, 16); ctx.fill(); });
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(170, 500, 172, 44, 22); ctx.fill();
+    ctx.fillStyle = '#fff'; [[396, 160, 5], [420, 230, 3], [110, 300, 4]].forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); });
+    ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.moveTo(400, 340); ctx.lineTo(408, 362); ctx.lineTo(430, 370); ctx.lineTo(408, 378); ctx.lineTo(400, 400); ctx.lineTo(392, 378); ctx.lineTo(370, 370); ctx.lineTo(392, 362); ctx.fill();
+  },
+  education(ctx) {
+    vgrad(ctx, W, H, [[0, '#06210f'], [0.6, '#12532b'], [1, '#04120a']]);
+    glow(ctx, 256, 400, 300, 'rgba(255,209,102,.30)');
+    ctx.fillStyle = '#fff1c9'; ctx.strokeStyle = '#d9b46a'; ctx.lineWidth = 4;   // open book
+    [[-1, 0], [1, 0]].forEach(([s]) => { ctx.beginPath(); ctx.moveTo(256, 330); ctx.quadraticCurveTo(256 + s * 120, 290, 256 + s * 215, 330); ctx.lineTo(256 + s * 215, 540); ctx.quadraticCurveTo(256 + s * 120, 500, 256, 540); ctx.closePath(); ctx.fill(); ctx.stroke(); });
+    ctx.strokeStyle = 'rgba(18,83,43,.55)'; ctx.lineWidth = 3;
+    for (let k = 0; k < 5; k++) { [-1, 1].forEach((s) => { ctx.beginPath(); ctx.moveTo(256 + s * 30, 372 + k * 28); ctx.lineTo(256 + s * 180, 366 + k * 28); ctx.stroke(); }); }
+    ctx.fillStyle = '#0c2a17'; ctx.beginPath(); ctx.moveTo(256, 130); ctx.lineTo(380, 180); ctx.lineTo(256, 230); ctx.lineTo(132, 180); ctx.fill();  // mortarboard
+    ctx.fillRect(196, 214, 120, 44); ctx.fillStyle = '#ffd166'; ctx.fillRect(374, 180, 5, 70); ctx.beginPath(); ctx.arc(376, 256, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd166'; [[90, 150], [430, 120], [450, 300], [70, 340]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); });
+  },
+  local(ctx) {
+    vgrad(ctx, W, H, [[0, '#06223a'], [0.6, '#0f4a73'], [1, '#04101c']]);
+    glow(ctx, 256, 420, 300, 'rgba(244,162,97,.30)');
+    const b = [[40, 380, 70], [118, 300, 84], [210, 420, 66], [284, 250, 96], [388, 340, 80], [112, 470, 56]];
+    ctx.fillStyle = '#071a2b'; b.forEach(([x, y, w]) => ctx.fillRect(x, y, w, 620 - y));
+    ctx.fillStyle = '#f4d58a';
+    b.forEach(([x, y, w]) => { for (let r = y + 16; r < 600; r += 30) for (let c = x + 10; c < x + w - 10; c += 20) if (((r * 7 + c * 3) | 0) % 5) ctx.fillRect(c, r, 8, 12); });
+    ctx.strokeStyle = '#f4a261'; ctx.lineWidth = 4; ctx.setLineDash([4, 12]);  // route
+    ctx.beginPath(); ctx.moveTo(60, 700); ctx.bezierCurveTo(200, 630, 300, 700, 440, 640); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#f4a261'; ctx.beginPath(); ctx.arc(256, 150, 52, 0, Math.PI * 2); ctx.fill();    // map pin
+    ctx.beginPath(); ctx.moveTo(214, 184); ctx.lineTo(256, 262); ctx.lineTo(298, 184); ctx.fill();
+    ctx.fillStyle = '#071a2b'; ctx.beginPath(); ctx.arc(256, 150, 20, 0, Math.PI * 2); ctx.fill();
+  },
+  diaspora(ctx) {
+    vgrad(ctx, W, H, [[0, '#2a1004'], [0.55, '#6b2c1a'], [1, '#07201f']]);
+    glow(ctx, 256, 380, 320, 'rgba(255,159,104,.38)');
+    ctx.strokeStyle = '#ffd9b8'; ctx.lineWidth = 3;                              // globe
+    ctx.beginPath(); ctx.arc(256, 340, 150, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(256, 340, 70, 150, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(106, 340); ctx.lineTo(406, 340); ctx.moveTo(256, 190); ctx.lineTo(256, 490); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(256, 340, 150, 60, 0, 0, Math.PI * 2); ctx.stroke();
+    const pts = [[150, 260], [350, 280], [190, 420], [330, 410], [256, 340]];
+    ctx.strokeStyle = '#2ec4b6'; ctx.lineWidth = 3; ctx.beginPath(); pts.forEach(([x, y], k) => k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+    ctx.fillStyle = '#ffe08a'; pts.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill(); });
+    ctx.fillStyle = '#ff9f68'; ctx.beginPath(); ctx.moveTo(256, 640); ctx.bezierCurveTo(150, 570, 170, 520, 256, 560); ctx.bezierCurveTo(342, 520, 362, 570, 256, 640); ctx.fill();  // heart
+    ctx.fillStyle = '#ffd9b8'; [[70, 140], [440, 170], [60, 560], [450, 520]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); });
+  },
+  personal(ctx) {   // a blank portfolio card: portrait circle, name line, role line, three work tiles
+    vgrad(ctx, W, H, [[0, '#14122a'], [1, '#0a0a16']]);
+    glow(ctx, 256, 300, 300, 'rgba(201,184,255,.22)');
+    ctx.strokeStyle = 'rgba(201,184,255,.6)'; ctx.lineWidth = 4; ctx.setLineDash([14, 10]);
+    ctx.beginPath(); ctx.arc(256, 250, 86, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(100, 380, 312, 26, 13); ctx.stroke(); ctx.beginPath(); ctx.roundRect(150, 424, 212, 18, 9); ctx.stroke();
+    [0, 1, 2].forEach((k) => { ctx.beginPath(); ctx.roundRect(70 + k * 126, 500, 116, 130, 12); ctx.stroke(); });
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(201,184,255,.18)'; ctx.beginPath(); ctx.arc(256, 226, 30, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(196, 316); ctx.quadraticCurveTo(256, 250, 316, 316); ctx.fill();
+    ctx.fillStyle = 'rgba(201,184,255,.9)'; ctx.font = '500 30px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText('Your Name_', 256, 130);
+  },
+  restricted(ctx) {
+    vgrad(ctx, W, H, [[0, '#101a12'], [1, '#080d09']]);
+    glow(ctx, 256, 380, 280, 'rgba(155,181,154,.22)');
+    ctx.fillStyle = 'rgba(155,181,154,.14)'; ctx.strokeStyle = '#9bb59a'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(256, 130); ctx.lineTo(396, 190); ctx.lineTo(380, 410); ctx.quadraticCurveTo(350, 520, 256, 590); ctx.quadraticCurveTo(162, 520, 132, 410); ctx.lineTo(116, 190); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#c7c19a'; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(192, 360); ctx.lineTo(240, 410); ctx.lineTo(328, 300); ctx.stroke();
+    ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+    ctx.fillStyle = 'rgba(155,181,154,.75)'; ctx.font = '700 44px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('18+', 256, 670);
+  },
+
   soon(ctx) {
     vgrad(ctx, W, H, [[0, '#0d0e15'], [1, '#161824']]);
     ctx.strokeStyle = 'rgba(154,160,180,.6)'; ctx.lineWidth = 4; ctx.setLineDash([18, 14]);
@@ -174,7 +343,8 @@ export function signTexture(d) {
   ctx.fillStyle = d.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.shadowColor = d.accent; ctx.shadowBlur = 24;
   let size = 124;
-  const font = d.theme === 'bollywood' ? '"Bebas Neue", Impact' : d.theme === 'portfolio' ? '"JetBrains Mono", monospace' : 'Cinzel, serif';
+  // Category stores carry their own `signFont`; the four hand-built stores keep the choice below.
+  const font = d.signFont || (d.theme === 'bollywood' ? '"Bebas Neue", Impact' : d.theme === 'portfolio' ? '"JetBrains Mono", monospace' : 'Cinzel, serif');
   do { ctx.font = `700 ${size}px ${font}`; size -= 4; } while (ctx.measureText(d.name).width > 900 && size > 40);
   ctx.fillText(d.name, 512, 132);
   return tex(c);
@@ -210,6 +380,15 @@ export function lobbyTexture(img, theme = 'dark') {
       wash.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = wash;
       ctx.fillRect(0, 0, 1024, 1024);
+      // Dark halo first, so the warm bloom that follows lands on top of it.
+      const darkCol = th === 'light' ? 'rgba(58,20,0,.5)' : 'rgba(0,0,0,.9)';
+      for (const blur of [78, 44, 20]) {
+        ctx.save();
+        ctx.shadowColor = darkCol;
+        ctx.shadowBlur = blur;
+        ctx.drawImage(img, x, top, w, h);
+        ctx.restore();
+      }
       const glowCol = th === 'light' ? 'rgba(28,16,6,.62)' : 'rgba(240,120,50,.85)';
       for (const blur of [64, 36, 18]) {
         ctx.save();

@@ -1,0 +1,37 @@
+/* Personal: the blank portfolio template. Light, quiet, generous whitespace, one accent. Everything that is
+   still a placeholder is drawn as a dashed grey box (.ph), so it is obvious what is yet to be filled in. */
+:root[data-theme=personal] { --bg: #fafaf7; --bg2: #f0efe9; --ink: #1b1b22; --dim: #5d5d6b; --a: #5b4bd6; --b: #8aa4ff; --on-a: #ffffff; --line: rgba(27,27,34,.14); --card: #ffffff;
+  --display: 'Space Grotesk', system-ui, sans-serif; --tracking: -.02em; --r: 14px; color-scheme: light; --hero-bg: none; }
+.pf-banner { background: #fff7d6; color: #5b4300; border-bottom: 1px solid #ecd98a; padding: 12px max(5vw, 16px); font-size: .9rem; }
+.pf-banner strong { font-weight: 700; }
+.pf { display: grid; grid-template-columns: 300px 1fr; gap: clamp(28px, 6vw, 80px); max-width: 1080px; margin: 0 auto; padding: clamp(40px, 8vw, 88px) max(5vw, 16px); }
+.pf-side { position: sticky; top: 84px; align-self: start; display: grid; gap: 14px; }
+.avatar { width: 132px; aspect-ratio: 1; border-radius: 50%; border: 2px dashed #b9b6cf; background: #f1f0f8 center / cover; display: grid; place-items: center; color: #9a97b5; font: 500 .75rem var(--mono); text-align: center; }
+.pf-side h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); }
+.pf-role { color: var(--dim); font-size: 1.05rem; }
+.pf-links { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-size: .92rem; }
+.pf-links a { color: var(--a); text-decoration: none; font-weight: 600; }
+.pf-links a:hover { text-decoration: underline; }
+.pf-main { display: grid; gap: clamp(36px, 6vw, 64px); min-width: 0; }
+.pf-main section h2 { font-size: .78rem; font-family: var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--a); margin-bottom: 16px; }
+.pf-main .big { font-family: var(--display); font-size: clamp(1.5rem, 3.4vw, 2.2rem); line-height: 1.25; letter-spacing: var(--tracking); }
+.ph { border: 2px dashed #c5c2d8; background: #f4f3fa; color: #77748f; border-radius: 10px; padding: 8px 12px; display: block; }
+.big.ph, .pf-side h1.ph { padding: 14px 16px; }
+span.ph { display: inline-block; padding: 2px 10px; }
+.hint { font-size: .8rem; color: #8a7a2a; background: #fffbe6; border: 1px solid #f1e3a0; border-radius: 8px; padding: 6px 10px; margin: 0 0 14px; }
+.work { display: grid; gap: 16px; }
+.work .card { padding: 22px 24px; }
+.work .card h3 { font-size: 1.25rem; margin-bottom: 6px; }
+.work dl { display: grid; gap: 10px; margin: 14px 0 0; }
+.work dt { font: 600 .72rem var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--a); }
+.work dd { margin: 2px 0 0; color: var(--dim); }
+.skills { display: grid; gap: 14px; }
+.skills h3 { font: 600 .85rem var(--body); margin-bottom: 8px; }
+.pf .chips li { background: #fff; }
+.tl { list-style: none; margin: 0; padding: 0 0 0 20px; border-left: 2px solid var(--line); display: grid; gap: 22px; }
+.tl li { position: relative; }
+.tl li::before { content: ''; position: absolute; left: -27px; top: 7px; width: 12px; height: 12px; border-radius: 50%; background: var(--a); border: 3px solid var(--bg); }
+.tl b { font-weight: 600; } .tl small { display: block; color: var(--dim); }
+.pf p.body { color: var(--dim); max-width: 40em; }
+.pf-main .cta-mail { display: inline-block; margin-top: 12px; }
+@media (max-width: 860px) { .pf { grid-template-columns: 1fr; } .pf-side { position: static; } }

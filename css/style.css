@@ -22,6 +22,10 @@
   --ok: #8de6b0;
   --logo-glow: rgba(240, 120, 50, .85);
   --logo-glow-soft: rgba(214, 74, 8, .55);
+  /* Dark halo beneath the warm bloom: seats the mark against the HUD instead
+     of letting it float. Held steady while the warm glow pulses. */
+  --logo-dark: rgba(0, 0, 0, .8);
+  --logo-dark-soft: rgba(0, 0, 0, .5);
   color-scheme: dark;
   --display: 'Cinzel', Georgia, serif;
   --body: 'Inter', system-ui, sans-serif;
@@ -52,6 +56,8 @@
      dark glow instead. Matches lobbyTexture()'s light-mode treatment in art.js. */
   --logo-glow: rgba(28, 16, 6, .42);
   --logo-glow-soft: rgba(40, 22, 8, .26);
+  --logo-dark: rgba(58, 20, 0, .38);
+  --logo-dark-soft: rgba(58, 20, 0, .2);
   color-scheme: light;
 }
 @media (prefers-color-scheme: light) {
@@ -79,6 +85,8 @@
     --ok: #11693a;
     --logo-glow: rgba(28, 16, 6, .42);
     --logo-glow-soft: rgba(40, 22, 8, .26);
+    --logo-dark: rgba(58, 20, 0, .38);
+    --logo-dark-soft: rgba(58, 20, 0, .2);
     color-scheme: light;
   }
 }
@@ -99,18 +107,29 @@ button { font: inherit; color: inherit; cursor: pointer; }
    The pulse is switched off by the reduced-motion rule at the end of this file. */
 .brand img {
   width: 34px; height: 34px; object-fit: contain;
-  filter: drop-shadow(0 0 3px var(--logo-glow)) drop-shadow(0 0 9px var(--logo-glow-soft));
+  filter: drop-shadow(0 0 2px var(--logo-dark)) drop-shadow(0 2px 7px var(--logo-dark-soft))
+          drop-shadow(0 0 3px var(--logo-glow)) drop-shadow(0 0 9px var(--logo-glow-soft));
   animation: logo-pulse 3.6s ease-in-out infinite;
 }
 @keyframes logo-pulse {
-  0%, 100% { filter: drop-shadow(0 0 3px var(--logo-glow)) drop-shadow(0 0 9px var(--logo-glow-soft)); }
-  50%      { filter: drop-shadow(0 0 6px var(--logo-glow)) drop-shadow(0 0 18px var(--logo-glow-soft)); }
+  0%, 100% { filter: drop-shadow(0 0 2px var(--logo-dark)) drop-shadow(0 2px 7px var(--logo-dark-soft))
+                     drop-shadow(0 0 3px var(--logo-glow)) drop-shadow(0 0 9px var(--logo-glow-soft)); }
+  50%      { filter: drop-shadow(0 0 2px var(--logo-dark)) drop-shadow(0 2px 7px var(--logo-dark-soft))
+                     drop-shadow(0 0 6px var(--logo-glow)) drop-shadow(0 0 18px var(--logo-glow-soft)); }
 }
 .brand .dim { color: var(--dim); }
 .brand:focus-visible { border-radius: 8px; }
 #dirs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 #dirs button { background: var(--chip-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; font-size: .78rem; backdrop-filter: blur(6px); transition: .2s; }
 #dirs button b { color: color-mix(in srgb, var(--a) var(--a-mix), var(--ink)); margin-right: 6px; font-weight: 600; }
+#dirs button small { margin-left: 7px; color: var(--dim); font-size: .7rem; font-variant-numeric: tabular-nums; }
+.finder { margin-left: auto; margin-right: 10px; }
+.finder input { width: 190px; max-width: 100%; background: var(--chip-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 99px; padding: 7px 14px; font: inherit; font-size: .8rem; backdrop-filter: blur(6px); transition: border-color .2s, width .2s; }
+.finder input::placeholder { color: var(--dim); }
+.finder input:focus { border-color: var(--gold); width: 240px; }
+.finder input[aria-invalid=true] { border-color: var(--err); }
+.in-store .finder { opacity: 0; pointer-events: none; }
+.no-gl .finder { display: none; }
 #dirs button:hover, #dirs button.on { border-color: var(--a); background: var(--chip-bg-hover); }
 .in-store #dirs { opacity: 0; pointer-events: none; }
 
@@ -168,6 +187,8 @@ a.btn { display: inline-block; text-decoration: none; text-align: center; line-h
 
 /* per-store atmosphere (behind content) */
 .fx { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+/* Baseline glow for the category stores (they have no bespoke effect): a soft wash of the store's own accent. */
+.store-inner .fx { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse 70% 45% at 50% 0%, color-mix(in srgb, var(--a) 20%, transparent), transparent 70%); }
 [data-theme=swami] .fx::before { content: ''; position: absolute; left: 50%; top: 18%; width: 70vmin; height: 70vmin; transform: translateX(-50%); border-radius: 50%; background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--b) 40%, transparent), transparent 30%, color-mix(in srgb, var(--a) 40%, transparent), transparent 60%); filter: blur(30px); animation: spin 18s linear infinite; }
 [data-theme=swami] .fx::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(transparent 0 5px, #0004 5px 6px); }
 [data-theme=bollywood] .fx::before { content: ''; position: absolute; inset: 12px; border: 10px dotted var(--a); border-radius: 18px; filter: drop-shadow(0 0 8px var(--a)); animation: bulbs 1.1s steps(2) infinite; opacity: .8; }
@@ -220,7 +241,8 @@ a.btn { display: inline-block; text-decoration: none; text-align: center; line-h
 .catalogue h2 { font: 700 clamp(1.7rem, 5vw, 2.5rem)/1.15 var(--display); letter-spacing: .02em; margin: 0 0 .5em; }
 .catalogue > p { color: var(--dim); margin: 0 0 2rem; }
 .catalogue article { padding: 1.4rem 0 1.5rem 1.2rem; border-top: 1px solid var(--line); border-left: 3px solid var(--gold); margin-bottom: 1.2rem; }
-.catalogue h3 { font: 700 clamp(1.4rem, 4vw, 1.9rem)/1.2 var(--display); margin: 0 0 .3em; overflow-wrap: anywhere; }
+.catalogue h3 { font: 700 clamp(1.2rem, 3.4vw, 1.5rem)/1.2 var(--display); letter-spacing: .04em; color: var(--gold-text); margin: 2.4rem 0 .6rem; }
+.catalogue h4 { font: 700 clamp(1.4rem, 4vw, 1.9rem)/1.2 var(--display); margin: 0 0 .3em; overflow-wrap: anywhere; }
 .catalogue article p { margin: 0 0 .7em; color: var(--dim); }
 .catalogue article strong { color: var(--gold-text); font-weight: 600; }
 .catalogue article p:last-child { margin-bottom: 0; font-size: .86rem; letter-spacing: .06em; text-transform: uppercase; }
@@ -238,6 +260,8 @@ dl.facts dd { margin: 0; color: var(--ink); line-height: 1.55; overflow-wrap: an
     .theme-toggle { position: absolute; top: 10px; right: 14px; }
   #dirs { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
   #dirs button { white-space: nowrap; }
+  .finder { margin: 0; width: calc(100% - 56px); }
+  .finder input, .finder input:focus { width: 100%; }
   #intro { bottom: 5vh; }
   #progress { top: 110px; right: 6px; }
 }
