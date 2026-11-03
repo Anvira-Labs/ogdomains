@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import { DOMAINS, WINGS } from './domains.js';
 import { windowTexture, signTexture, lobbyTexture, textPlane, wallEmblemTexture, ceilingTexture, recessTexture } from './art.js';
 import { renderDirectory, markActive, openStore, closeStore, isStoreOpen, setBackHandler, isModalOpen, closeModal } from './ui.js';
@@ -118,7 +120,18 @@ function enterStore(i, push = true) {
   $('#hint').classList.remove('on');
   if (push) history.pushState({ store: i }, '', '#' + DOMAINS[i].id);
   startDolly(true);
+  enterFx(i);
   setTimeout(() => { if (mode === 'store') openStore(DOMAINS[i], i); }, reduceMotion || !scene ? 0 : DOLLY_MS_UI);
+}
+
+// "Walking in": the camera dollies to the doorway while a warm accent flash swells and a caption names the store.
+function enterFx(i) {
+  if (reduceMotion || !scene) return;
+  const el = $('#enter-fx'); if (!el) return;
+  const c = '#' + new THREE.Color(DOMAINS[i].accent).getHexString();
+  el.style.setProperty('--fx', c);
+  $('.fx-cap', el).textContent = `Entering No. ${String(i + 1).padStart(3, '0')} · ${DOMAINS[i].name}`;
+  el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
 }
 
 function exitStore() {
@@ -162,8 +175,8 @@ const easeInOutCubic = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2
 
 function storePose(i, pos, lk) {
   const s = sideOf(i);
-  pos.set(s * 2.4, 1.7, storeZ(i));
-  lk.set(s * 8, 2.5, storeZ(i));
+  pos.set(s * 3.9, 1.7, storeZ(i));
+  lk.set(s * 8, 2.4, storeZ(i));
 }
 function hallPose(pos, lk, bob = 0) {
   const p = Math.min(1, Math.max(0, scrollY / cachedMax));
@@ -226,6 +239,7 @@ function portalKit() {
   K.threshMat = new THREE.MeshBasicMaterial({ map: tThresh, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   K.glassGeo = P(2 * OW, OH);
   K.glassMat = new THREE.MeshBasicMaterial({ map: tGlass, transparent: true, depthWrite: false, fog: false });
+  K.padGeo = P(2.8, 2.8); K.padTex = padTexture();
   K.stone = new THREE.MeshLambertMaterial({ color: 0x8a7459 });
   K.plinth = new THREE.MeshLambertMaterial({ color: 0x2a2118 });
   K.plinthA = new THREE.BoxGeometry(0.8, 0.8, 0.8); K.plinthB = new THREE.BoxGeometry(0.6, 1.15, 0.6);
@@ -234,6 +248,38 @@ function portalKit() {
   K.panelGeo = P(1, 1);
   K.washGeo = P(1, 1); K.poolGeo = P(3.2, 1.8); K.signGeo = P(3.6, 0.9);
   return K;
+}
+
+// Floor "enter" pad: ring + three chevrons pointing at the door. White, tinted per store.
+function padTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  x.strokeStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round';
+  x.lineWidth = 8; x.beginPath(); x.arc(128, 128, 112, 0, Math.PI * 2); x.stroke();
+  x.globalAlpha = 0.18; x.fillStyle = '#fff'; x.beginPath(); x.arc(128, 128, 106, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1;
+  x.lineWidth = 16;
+  for (let k = 0; k < 3; k++) { const y = 150 - k * 38; x.beginPath(); x.moveTo(78, y + 30); x.lineTo(128, y); x.lineTo(178, y + 30); x.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+
+// Domain name as extruded 3D letters standing on the middle lane, facing whoever walks down the hall.
+let fontP = null;
+function loadFont() {
+  return fontP || (fontP = new Promise((res) => new FontLoader().load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', res, undefined, () => res(null))));
+}
+function standingName(name, color, z, rec, index) {
+  loadFont().then((font) => {
+    if (!font || rec.dead) return;
+    const geo = new TextGeometry(name, { font, size: 0.8, height: 0.2, curveSegments: 4, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.015, bevelSegments: 1 });
+    geo.computeBoundingBox(); const bb = geo.boundingBox, w = bb.max.x - bb.min.x;
+    geo.translate(-(bb.min.x + bb.max.x) / 2, 0, 0);
+    const front = new THREE.MeshBasicMaterial({ color, fog: true }), side = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(0.45), fog: true });
+    const m = new THREE.Mesh(geo, [front, side]);
+    m.position.set(0, 0, z); m.scale.setScalar(Math.min(1, 3.7 / w)); m.userData.mats = [front, side];
+    m.userData.index = index; rec.door.letters = m;
+    rec.letters = m; scene.add(m); refreshPick();
+  });
 }
 
 function buildStore(d, i) {
@@ -294,23 +340,30 @@ function buildStore(d, i) {
   const pool = add(K.poolGeo, own(new THREE.MeshBasicMaterial({ map: poolTex(), color: d.accent, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })), 0, 0.03, 1.7);
   pool.scale.set(3.4, 3.6, 1); pool.rotation.x = -Math.PI / 2;
 
+  // tappable floor pad (ring + chevrons) in front of the door (also a raycast target)
+  const padMat = own(new THREE.MeshBasicMaterial({ map: K.padTex, color: d.accent, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  const pad = add(K.padGeo, padMat, 0, 0.05, 2.6);
+  pad.rotation.x = -Math.PI / 2; pad.renderOrder = 2; pad.userData.index = i;
+
   // click/hover target: the whole portal opening plus a margin (invisible, raycast only)
   const hit = add(K.hitGeo, K.hitMat, 0, 2.5, 0.06);
   hit.userData.index = i;
   const door = {
-    mesh: hit, mat: winMat, accent, index: i, k: 0, pool, panel, prod,
+    mesh: hit, pad, padMat, mat: winMat, accent, index: i, k: 0, pool, panel, prod,
     // presentation: the store reaches toward the viewer when they turn its way
     side, present: 0, hitZ: hit.position.z, prodZ: prod.position.z,
   };
   doors[i] = door; live.push(door);
-  built.set(i, { g, mats, texs, wash, door });
+  const rec = { g, mats, texs, wash, door, dead: false };
+  standingName(d.name, '#' + new THREE.Color(d.accent).getHexString(), z, rec, i);
+  built.set(i, rec);
   scene.add(g);
 }
 
 function unbuildStore(i) {
   const b = built.get(i);
   if (!b) return;
-  scene.remove(b.g);
+  scene.remove(b.g); b.dead = true; if (b.letters) { scene.remove(b.letters); b.letters.geometry.dispose(); b.letters.userData.mats.forEach((m) => m.dispose()); }
   b.mats.forEach((m) => m.dispose());
   b.texs.forEach((t) => t.dispose());          // shared geometry, the portal kit and the pool glow stay
   const w = S.washes.indexOf(b.wash); if (w >= 0) S.washes.splice(w, 1);
@@ -323,7 +376,7 @@ const AHEAD = 88, BEHIND = 44;               // build this far in front of / beh
 const KEEP_AHEAD = 112, KEEP_BEHIND = 64;    // and only drop them beyond this, so edges don't flicker
 const BUILD_PER_FRAME = 2;
 function ensureStore(i) { if (!built.has(i)) { buildStore(DOMAINS[i], i); refreshPick(); } }
-function refreshPick() { doorMeshes = live.map((d) => d.mesh); }
+function refreshPick() { doorMeshes = live.flatMap((d) => (d.letters ? [d.mesh, d.pad, d.letters] : [d.mesh, d.pad])); }
 function streamStores(sync) {
   const z = camera.position.z;
   // while a long jump is in flight the camera crosses hundreds of metres a second: wait until it lands
@@ -533,6 +586,8 @@ function frame() {
   // hover easing (~0.25s) for every door
   for (const d of live) {
     d.k = THREE.MathUtils.damp(d.k, d.index === hover ? 1 : 0, 14, dt);
+    d.padMat.opacity = (0.45 + 0.25 * (reduceMotion ? 1 : 0.5 + 0.5 * Math.sin(t * 3 + d.index)) + 0.3 * d.k);
+    d.pad.scale.setScalar(1 + 0.05 * d.k);
 
     // Turning toward a side of the corridor presents that storefront: as you look or
     // swipe left/right while near it, the whole shopfront eases out of the wall and
@@ -585,10 +640,10 @@ function frame() {
       let near = -1, best = 8;
       for (let i = 0; i < N; i++) { const dz = Math.abs(z - storeZ(i)); if (dz < best) { best = dz; near = i; } }
       markActive(near >= 0 ? DOMAINS[near].cat : -1);
-      const h = isMobile ? (steerIdx >= 0 && doors[steerIdx] && doors[steerIdx].present > 0.6 ? steerIdx : -1) : pick();
+      const h = isMobile ? (near >= 0 && best < 5 && doors[near] ? near : -1) : pick();
       if (h !== hover) {
         hover = h;
-        if (h >= 0) { hintEl.textContent = `Enter No. ${String(h + 1).padStart(3, '0')} · ${DOMAINS[h].name}`; hintEl.classList.add('on'); } else hintEl.classList.remove('on');
+        if (h >= 0) { hintEl.textContent = `${isMobile ? 'Tap to enter' : 'Enter'} No. ${String(h + 1).padStart(3, '0')} · ${DOMAINS[h].name}`; hintEl.classList.add('on'); } else hintEl.classList.remove('on');
         canvasEl.style.cursor = h >= 0 ? 'pointer' : 'default';
       }
     } else if (current >= 0) {
@@ -648,6 +703,7 @@ async function init() {
   addEventListener('pointermove', (e) => {
     pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   }, { passive: true });
+  hintEl.addEventListener('click', () => { if (mode === 'hall' && hover >= 0) enterStore(hover); });
   canvasEl.addEventListener('click', (e) => {
     pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     let h = pick();

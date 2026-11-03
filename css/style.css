@@ -143,6 +143,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes cue { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(14px); } }
 #hint { position: fixed; z-index: 4; left: 50%; bottom: 8vh; transform: translate(-50%, 10px); padding: 10px 20px; background: var(--hint-bg); border: 1px solid var(--gold); color: var(--gold-text); border-radius: 99px; letter-spacing: .08em; font-size: .85rem; opacity: 0; transition: .25s; pointer-events: none; }
 #hint.on { opacity: 1; transform: translate(-50%, 0); }
+@media (pointer:coarse) { #hint.on { pointer-events: auto; cursor: pointer; padding: 14px 24px; font-size: .95rem; } }
 #progress { position: fixed; z-index: 4; right: 10px; top: 88px; bottom: 24px; width: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
 #progress i { display: block; height: 100%; background: var(--gold); transform-origin: top; transform: scaleY(0); }
 .in-store #progress, .in-store #intro { opacity: 0 !important; }
@@ -311,3 +312,9 @@ dl.facts dd { margin: 0; color: var(--ink); line-height: 1.55; overflow-wrap: an
 @keyframes g-talk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.45); } }
 @media (max-width: 700px) { #guide .g-say { left: 0; bottom: calc(100% + 6px); width: calc(100vw - 24px); } #guide .g-say::before { left: 40px; bottom: -8px; transform: rotate(-45deg); border-left: 0; border-bottom: 1.5px solid var(--gold); border-right: 1.5px solid var(--gold); } }
 #guide .g-vname { margin: -4px 0 8px; font-size: .72rem; color: var(--dim); line-height: 1.35; }
+
+/* walking-in transition */
+#enter-fx { position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 55%, var(--fx, #f5c26b) 0%, rgba(0,0,0,0) 55%); }
+#enter-fx .fx-cap { color: #fff; letter-spacing: .08em; font-size: 1rem; text-shadow: 0 2px 14px rgba(0,0,0,.7); padding: 0 24px; text-align: center; }
+#enter-fx.go { animation: enterfx 1s ease-in forwards; }
+@keyframes enterfx { 0% { opacity: 0; transform: scale(.6); } 45% { opacity: .85; } 100% { opacity: 0; transform: scale(2.4); } }

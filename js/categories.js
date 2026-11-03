@@ -2,7 +2,7 @@
 //   - how its storefront window and sign look in the hallway (`key` picks the painter in art.js),
 //   - the wording of its store panel (`tagline`, `why`, `buyers`),
 //   - which concept-site theme it opens (`site/themes/<key>.css`) and what that site says (`site`).
-// `{B}` is replaced with the brand name ("Hindumandir") and `{D}` with the full domain ("hindumandir.in").
+// `{B}` is replaced with the brand name ("HinduMandir") and `{D}` with the full domain ("hindumandir.in").
 // Wording is concept-only: no claims about traffic, history, revenue or any real company.
 export const CATEGORIES = [
   {

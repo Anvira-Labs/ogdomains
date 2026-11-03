@@ -1,4 +1,5 @@
 import { CATALOGUE } from './catalogue.js';
+import { camelLabel } from './camel.js';
 import { CATEGORIES, CATEGORY_BY_NO } from './categories.js';
 
 // Store catalogue. The hallway builds itself from DOMAINS, which is assembled at the bottom of this file:
@@ -29,7 +30,7 @@ function expand([domain, catNo]) {
   const cat = CATEGORY_BY_NO[catNo];
   const label = domain.split('.')[0];
   const ext = domain.slice(label.length + 1);
-  const B = label[0].toUpperCase() + label.slice(1); // "Hindumandir": brand name used by the concept sites
+  const B = camelLabel(label); // "HinduMandir": word-split CamelCase brand name, used everywhere (signs, stores, concept sites)
   const id = domain.replace(/[^a-z0-9]+/g, '-');
   return {
     id, cat: catNo, domain, brand: B, ext,
