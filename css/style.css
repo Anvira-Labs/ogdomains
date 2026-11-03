@@ -310,4 +310,4 @@ dl.facts dd { margin: 0; color: var(--ink); line-height: 1.55; overflow-wrap: an
 #guide.talking #g-mouth { animation: g-talk .26s ease-in-out infinite; }
 @keyframes g-talk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.45); } }
 @media (max-width: 700px) { #guide .g-say { left: 0; bottom: calc(100% + 6px); width: calc(100vw - 24px); } #guide .g-say::before { left: 40px; bottom: -8px; transform: rotate(-45deg); border-left: 0; border-bottom: 1.5px solid var(--gold); border-right: 1.5px solid var(--gold); } }
-
+#guide .g-vname { margin: -4px 0 8px; font-size: .72rem; color: var(--dim); line-height: 1.35; }

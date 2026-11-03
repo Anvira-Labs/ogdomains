@@ -17,8 +17,8 @@ const ldBlock = `<script type="application/ld+json">\n  ${JSON.stringify(ld, nul
 
 const price = (d) => (d.sale ? '<p>Price: make an offer.</p>' : '<p>Not for sale — the owner\'s own site.</p>');
 const articles = WINGS.map((w) => {
-  const items = DOMAINS.filter((d) => d.cat === w.no).map((d) => `      <article id="cat-${esc(d.id)}">
-        <h4>${esc(d.name)}</h4>
+  const items = DOMAINS.map((d, i) => [d, i]).filter(([d]) => d.cat === w.no).map(([d, i]) => `      <article id="cat-${esc(d.id)}">
+        <h4>${esc(d.name)} <small>(store ${String(i + 1).padStart(3, '0')})</small></h4>
         <p><strong>${esc(d.tagline)}</strong></p>
         <p>${esc(d.why)}</p>
         ${price(d)}

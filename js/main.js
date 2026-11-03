@@ -283,7 +283,7 @@ function buildStore(d, i) {
   box(5.0, 1.5, 0.34, K.stone, 0, 5.45, 0.17);
   box(5.2, 0.16, 0.5, K.stone, 0, 6.28, 0.25);
   box(5.2, 0.03, 0.52, S.gold, 0, 6.37, 0.26);
-  const signMat = own(new THREE.MeshBasicMaterial({ map: signTexture(d) })); texs.push(signMat.map);
+  const signMat = own(new THREE.MeshBasicMaterial({ map: signTexture(d, i + 1) })); texs.push(signMat.map);
   add(K.signGeo, signMat, 0, 5.45, 0.35);
 
   // faint warm wash on the wall around the lit opening (additive, no light)
@@ -523,8 +523,8 @@ function frame() {
     if (mode === 'hall') {
       let best = 1e9;
       for (let i = 0; i < N; i++) { const a = wantPos.z - storeZ(i); if (a > 1.5 && a < best) { best = a; idx = i; } }
-      if (idx >= 0 && best < 15) tgt = sideOf(idx) * Math.min(1, (15 - best) / 5) * 0.85 * Math.min(1, (best - 1.5) / 2.5 + 0.35);
-      else idx = -1;
+      // No auto-steer: it swung the camera left/right (zig-zag) as doors alternate sides. Phones walk straight; tap a door to open it.
+      idx = -1;
     }
     steer = THREE.MathUtils.damp(steer, tgt, 3, dt); steerIdx = idx; px = steer;
   } else px = pointer.x;
@@ -588,7 +588,7 @@ function frame() {
       const h = isMobile ? (steerIdx >= 0 && doors[steerIdx] && doors[steerIdx].present > 0.6 ? steerIdx : -1) : pick();
       if (h !== hover) {
         hover = h;
-        if (h >= 0) { hintEl.textContent = `Enter ${DOMAINS[h].name}`; hintEl.classList.add('on'); } else hintEl.classList.remove('on');
+        if (h >= 0) { hintEl.textContent = `Enter No. ${String(h + 1).padStart(3, '0')} · ${DOMAINS[h].name}`; hintEl.classList.add('on'); } else hintEl.classList.remove('on');
         canvasEl.style.cursor = h >= 0 ? 'pointer' : 'default';
       }
     } else if (current >= 0) {

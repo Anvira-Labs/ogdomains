@@ -333,7 +333,8 @@ export function windowTexture(d) {
   return tex(c);
 }
 
-export function signTexture(d) {
+// `n` is the store number (1-based), printed on a plaque at the left of the sign as "NO. 079"; the name uses the rest.
+export function signTexture(d, n) {
   const [c, ctx] = make(1024, 256);
   const g = ctx.createLinearGradient(0, 0, 1024, 0);
   g.addColorStop(0, '#0b0b12'); g.addColorStop(0.5, '#171722'); g.addColorStop(1, '#0b0b12');
@@ -341,12 +342,22 @@ export function signTexture(d) {
   ctx.strokeStyle = d.accent; ctx.lineWidth = 6; ctx.strokeRect(10, 10, 1004, 236);
   ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1.5; ctx.strokeRect(22, 22, 980, 212);
   ctx.fillStyle = d.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const numbered = Number.isInteger(n);
+  if (numbered) {
+    ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(34, 34, 168, 188);
+    ctx.strokeStyle = d.accent; ctx.lineWidth = 2; ctx.strokeRect(34, 34, 168, 188);
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '600 30px Inter, sans-serif'; ctx.fillText('NO.', 118, 78);
+    ctx.shadowColor = d.accent; ctx.shadowBlur = 14; ctx.fillStyle = d.accent; ctx.font = '700 84px "JetBrains Mono", monospace';
+    ctx.fillText(String(n).padStart(3, '0'), 118, 158);
+    ctx.fillStyle = d.accent;
+  }
+  const cx = numbered ? 620 : 512, maxW = numbered ? 760 : 900;
   ctx.shadowColor = d.accent; ctx.shadowBlur = 24;
   let size = 124;
   // Category stores carry their own `signFont`; the four hand-built stores keep the choice below.
   const font = d.signFont || (d.theme === 'bollywood' ? '"Bebas Neue", Impact' : d.theme === 'portfolio' ? '"JetBrains Mono", monospace' : 'Cinzel, serif');
-  do { ctx.font = `700 ${size}px ${font}`; size -= 4; } while (ctx.measureText(d.name).width > 900 && size > 40);
-  ctx.fillText(d.name, 512, 132);
+  do { ctx.font = `700 ${size}px ${font}`; size -= 4; } while (ctx.measureText(d.name).width > maxW && size > 40);
+  ctx.fillText(d.name, cx, 132);
   return tex(c);
 }
 

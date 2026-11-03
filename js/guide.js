@@ -60,9 +60,11 @@ root.innerHTML = `
 </svg>
 <div class="g-say" id="g-say" hidden>
   <p id="g-text" role="status" aria-live="polite"></p>
+  <p class="g-vname" id="g-vname" hidden></p>
   <div class="g-ctl">
     <button type="button" id="g-next">Another fact</button>
     <button type="button" id="g-voice" aria-pressed="false">Voice: off</button>
+    <button type="button" id="g-change" hidden>Change voice</button>
     <button type="button" id="g-close" aria-label="Close the guide's speech">&times;</button>
   </div>
 </div>`;
@@ -116,27 +118,52 @@ if (!reduce) { setTimeout(tip, 1600); setInterval(tip, 16000 + Math.random() * 6
 pose(0, 0);
 
 // ---- Speech: a random fact in a bubble, typed out while the mouth moves; optional read-aloud voice ----
-const say = $('#g-say'), textEl = $('#g-text'), btnNext = $('#g-next'), btnVoice = $('#g-voice'), btnClose = $('#g-close');
+const say = $('#g-say'), textEl = $('#g-text'), btnNext = $('#g-next'), btnVoice = $('#g-voice'), btnChange = $('#g-change'), btnClose = $('#g-close');
 const synth = 'speechSynthesis' in window ? window.speechSynthesis : null;
-const VOICE_KEY = 'ogd-guide-voice';
+const VOICE_KEY = 'ogd-guide-voice', VOICE_NAME_KEY = 'ogd-guide-voice-name';
 let voiceOn = false;
 try { voiceOn = !!synth && localStorage.getItem(VOICE_KEY) === '1'; } catch {}
 if (!synth) btnVoice.hidden = true;
+
+// The voices are whatever this device ships with, so the accent cannot be guaranteed. The target is an upbeat,
+// friendly Canadian man in his fifties: prefer an en-CA voice, then North American male voices, and never a novelty voice.
+const NOVELTY = /^(bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|junior|kathy|ralph|grandma|grandpa)\b/i;
+const MALE = ['reed', 'eddy', 'rocko', 'fred', 'aaron', 'evan', 'nathan', 'tom', 'alex', 'daniel', 'oliver', 'arthur', 'gordon', 'google us english', 'microsoft mark', 'microsoft david'];
+function rank(v) {
+  const lang = v.lang.replace('_', '-'), name = v.name.toLowerCase();
+  const m = MALE.findIndex((n) => name.includes(n));
+  return (/^en-CA$/i.test(lang) ? 0 : /^en-US$/i.test(lang) ? 100 : /^en-(GB|AU|IE)$/i.test(lang) ? 200 : 300) + (m < 0 ? 50 : m);
+}
+const englishVoices = () => (synth ? synth.getVoices() : []).filter((v) => /^en/i.test(v.lang) && !NOVELTY.test(v.name)).sort((a, b) => rank(a) - rank(b));
+let voiceName = '';
+try { voiceName = localStorage.getItem(VOICE_NAME_KEY) || ''; } catch {}
+const currentVoice = () => { const vs = englishVoices(); return vs.find((v) => v.name === voiceName) || vs[0] || null; };
+function showVoiceName() {
+  const v = currentVoice(), el = $('#g-vname');
+  btnChange.hidden = !(voiceOn && englishVoices().length > 1);
+  el.hidden = !(voiceOn && v);
+  if (v) el.textContent = `Voice: ${v.name.replace(/\s*\(.*\)$/, '')} (${v.lang.replace('_', '-')})${/^en-CA$/i.test(v.lang.replace('_', '-')) ? '' : ' · no Canadian voice on this device'}`;
+}
 const setVoice = (on) => {
   voiceOn = on; btnVoice.setAttribute('aria-pressed', String(on)); btnVoice.textContent = 'Voice: ' + (on ? 'on' : 'off');
   try { localStorage.setItem(VOICE_KEY, on ? '1' : '0'); } catch {}
   if (!on && synth) synth.cancel();
+  showVoiceName();
 };
+if (synth) synth.addEventListener('voiceschanged', showVoiceName);   // many browsers load the list late
 setVoice(voiceOn);
 
 let bag = [], typing = 0, hideTimer = 0, nextTimer = 0, autoShown = 0, stopped = false, hovering = false;
 const MAX_AUTO = 5;                                   // the guide speaks up on its own this many times, then waits to be asked
 let first = true;
-const fill = (f) => f.replace('{n}', DOMAINS.length);
+const OPENERS = ['Hey there!', 'Here\'s a good one!', 'Did you know?', 'Oh, I love this one!', 'Listen to this, friend!', 'Fun fact!', 'Now this is important!'];
+const lively = (f) => f.replace(/\.$/, '!');                    // an upbeat ending
+const fill = (f) => lively(f.replace('{n}', DOMAINS.length));
 const pick = () => {                                  // shuffle bag: every fact once before any repeats
-  if (first) { first = false; return fill(VALUE[Math.floor(Math.random() * VALUE.length)]); }   // open with the value of a good name
+  if (first) { first = false; return 'Welcome in, friend! ' + fill(VALUE[Math.floor(Math.random() * VALUE.length)]); }   // open with the value of a good name
   if (!bag.length) bag = FACTS.map(fill).sort(() => Math.random() - 0.5);
-  return bag.pop();
+  const f = bag.pop();
+  return Math.random() < 0.6 ? OPENERS[Math.floor(Math.random() * OPENERS.length)] + ' ' + f : f;
 };
 const inStore = () => document.body.classList.contains('in-store');
 
@@ -157,9 +184,10 @@ function showFact(fact = pick()) {
   };
   if (!(voiceOn && synth)) return timed(reduce ? 14 : 24);
 
-  const u = new SpeechSynthesisUtterance(fact), vs = synth.getVoices();
-  u.voice = vs.find((v) => v.lang === 'en-IN') || vs.find((v) => /^en/i.test(v.lang)) || null;
-  u.rate = 0.97;
+  const u = new SpeechSynthesisUtterance(fact);
+  u.voice = currentVoice();
+  if (u.voice) u.lang = u.voice.lang;
+  u.rate = 1.06; u.pitch = 0.95;                       // brisk and eager, a touch lower for a man in his fifties
   let gotBoundary = false, fallback = 0;
   u.onstart = () => {
     if (mine !== seq) return;
@@ -187,6 +215,13 @@ function scheduleAuto(ms) {
 }
 btnNext.addEventListener('click', () => showFact());
 btnVoice.addEventListener('click', () => { setVoice(!voiceOn); if (voiceOn && !say.hidden) showFact(current || undefined); }); // turning it on re-reads the fact aloud; turning it off leaves the text as is
+btnChange.addEventListener('click', () => {         // step to the next English voice and say the current fact with it
+  const vs = englishVoices(); if (!vs.length) return;
+  const i = vs.findIndex((v) => v.name === (currentVoice() || {}).name);
+  voiceName = vs[(i + 1) % vs.length].name;
+  try { localStorage.setItem(VOICE_NAME_KEY, voiceName); } catch {}
+  showVoiceName(); showFact(current || undefined);
+});
 btnClose.addEventListener('click', () => { stopped = true; seq++; clearTimeout(nextTimer); clearInterval(typing); clearTimeout(hideTimer); if (synth) synth.cancel(); root.classList.remove('talking'); say.classList.remove('on'); say.hidden = true; });
 say.addEventListener('pointerenter', () => { hovering = true; });
 say.addEventListener('pointerleave', () => { hovering = false; });

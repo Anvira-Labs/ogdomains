@@ -73,7 +73,7 @@ export function setBackHandler(fn) { onBack = fn; }
 export function renderDirectory(wings, domains, on) {
   const nav = $('#dirs');
   nav.innerHTML = wings
-    .map((w) => `<button type="button" data-cat="${w.no}" style="--a:${w.accent}" aria-label="Walk to ${esc(w.name)}, ${w.count} ${w.count === 1 ? 'domain' : 'domains'}"><b aria-hidden="true">${String(w.no).padStart(2, '0')}</b>${esc(w.short)}<small aria-hidden="true">${w.count}</small></button>`)
+    .map((w) => `<button type="button" data-cat="${w.no}" style="--a:${w.accent}" title="Stores ${w.first + 1}–${w.first + w.count}" aria-label="Walk to ${esc(w.name)}, stores ${w.first + 1} to ${w.first + w.count}, ${w.count} ${w.count === 1 ? 'domain' : 'domains'}"><b aria-hidden="true">${String(w.no).padStart(2, '0')}</b>${esc(w.short)}<small aria-hidden="true">${w.count}</small></button>`)
     .join('');
   nav.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-cat]');
@@ -82,10 +82,12 @@ export function renderDirectory(wings, domains, on) {
 
   const input = $('#finder'), list = $('#finder-list');
   if (!input || !list) return;
-  list.innerHTML = domains.map((d) => `<option value="${esc(d.name)}"></option>`).join('');
+  list.innerHTML = domains.map((d, i) => `<option value="${esc(d.name)}" label="No. ${String(i + 1).padStart(3, '0')}"></option>`).join('');
   const find = (text) => {
     const v = text.trim().toLowerCase();
     if (!v) return -1;
+    const num = /^(?:no\.?\s*|#|store\s*)?0*(\d{1,3})$/.exec(v);    // "79", "079", "#79", "no. 79": go by store number
+    if (num) { const i = +num[1] - 1; return i >= 0 && i < domains.length ? i : -1; }
     const exact = domains.findIndex((d) => d.name.toLowerCase() === v);
     if (exact >= 0) return exact;
     const starts = domains.map((d, i) => (d.name.toLowerCase().startsWith(v) ? i : -1)).filter((i) => i >= 0);
@@ -141,7 +143,7 @@ export function openStore(d, index) {
       <div class="fx" aria-hidden="true"></div>
       <button class="back" type="button" data-back>← Back to hallway</button>
       <div class="hero">
-        <p class="eyebrow">Store ${String(index + 1).padStart(2, '0')} · ${d.sale ? 'For sale' : d.cta ? 'Not for sale' : 'Coming soon'}</p>
+        <p class="eyebrow">Store ${String(index + 1).padStart(3, '0')} · ${d.sale ? 'For sale' : d.cta ? 'Not for sale' : 'Coming soon'}</p>
         <h2 id="store-title">${d.name}</h2>
         <p class="tag">${d.tagline}</p>
         <div class="cta">${visit}${cta}<span class="price">${d.price}</span></div>
